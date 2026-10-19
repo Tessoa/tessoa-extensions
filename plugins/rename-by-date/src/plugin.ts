@@ -1,4 +1,4 @@
-// Example plugin: rename the selected photos after their capture date.
+// Rename by capture date: rename the selected photos after their capture date.
 //
 // The command reads the EXIF header of every selected file, builds a name
 // like 2026-10-03_1422.jpg, shows the plan in a confirmation dialog and asks

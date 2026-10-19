@@ -1,4 +1,4 @@
-// Example plugin: a calculator page.
+// Calculator: a calculator page.
 //
 // The page shows the number being typed, or the last result, with the
 // pending operation above it. Buttons and the keyboard do the same things:
@@ -6,10 +6,6 @@
 // become one action name. The copy button puts the shown number on the
 // clipboard, the one permission the plugin declares. The state survives a
 // restart: `save` hands it to tessoa, and `open` gets it back.
-//
-// The Rust twin in examples/calculator-rs draws the same tree for the same
-// input; the tests compare the two node by node. Both round results the same
-// way (see formatNumber), so they show the same digits.
 
 type Op = "+" | "-" | "*" | "/";
 
@@ -55,10 +51,9 @@ function restore(state: unknown): Calculator {
 
 /**
  * A result as the display shows it: rounded to ten decimals, without
- * trailing zeros, "Error" when it is not a number or too large. The rounding
- * is done by hand so that TypeScript and Rust print the same digits: both
- * round the same doubles in the same way, and the fixed-point formatting of
- * the rounded value is then exact in both.
+ * trailing zeros, "Error" when it is not a number or too large. The value is
+ * rounded first, so the fixed-point formatting of the rounded value is exact
+ * and a result such as 0.1 + 0.2 shows as 0.3.
  */
 function formatNumber(x: number): string {
   if (!Number.isFinite(x) || Math.abs(x) >= 1e15) return "Error";

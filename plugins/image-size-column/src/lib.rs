@@ -1,4 +1,4 @@
-//! Example plugin: a column with the width and height of PNG and JPEG images.
+//! Image size column: a column with the width and height of PNG and JPEG images.
 //!
 //! The user adds the column "Dimensions" from the column menu of tessoa's
 //! file list. tessoa asks the plugin only for the files on screen, and only

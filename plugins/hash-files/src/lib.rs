@@ -1,4 +1,4 @@
-//! Example plugin: hash the selected files and save the hashes as a report.
+//! Hash files: hash the selected files and save the hashes as a report.
 //!
 //! Hashing a few large files takes longer than a command may run, so the
 //! command only starts a task and returns. The task runs in a worker, a

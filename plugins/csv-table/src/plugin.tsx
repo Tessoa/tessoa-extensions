@@ -1,4 +1,4 @@
-// Example plugin: a CSV file as a table.
+// CSV table: a CSV file as a table.
 //
 // "Open CSV…" lets the user pick a file in tessoa's file picker; the page
 // reads it (the picked file is a file reference, read with

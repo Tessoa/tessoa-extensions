@@ -1,4 +1,4 @@
-// Example plugin: a JSON file as a tree.
+// JSON viewer: a JSON file as a tree.
 //
 // "Open JSON…" lets the user pick a file; the page reads and parses it and
 // shows the top-level entries as the rows of a tree. An object or an array

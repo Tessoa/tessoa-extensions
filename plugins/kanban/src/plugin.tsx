@@ -1,4 +1,4 @@
-// Example plugin: a task board.
+// Task board: cards in columns.
 //
 // Cards sit in three columns. A new card starts in the first; dragging a
 // card onto a column moves it there, before the card it is dropped on. A
