@@ -6,5 +6,5 @@ en = "Calculator"
 zh = "计算器"
 
 [desc]
-en = "A calculator in a tab, used with the mouse or the keyboard, whose result can be copied."
-zh = "在标签页中使用的计算器，可用鼠标或键盘操作，结果可复制。"
+en = "A calculator in a tab, used with the mouse or the keyboard, whose result can be copied"
+zh = "在标签页中使用的计算器，可用鼠标或键盘操作，结果可复制"

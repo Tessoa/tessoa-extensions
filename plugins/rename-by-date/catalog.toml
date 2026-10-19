@@ -6,5 +6,5 @@ en = "Rename by capture date"
 zh = "按拍摄日期重命名"
 
 [desc]
-en = "Renames the selected photos after the date and time they were taken."
-zh = "按拍摄日期和时间重命名选中的照片。"
+en = "Renames the selected photos after the date and time they were taken"
+zh = "按拍摄日期和时间重命名选中的照片"

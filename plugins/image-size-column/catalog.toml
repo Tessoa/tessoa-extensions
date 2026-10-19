@@ -6,5 +6,5 @@ en = "Image size column"
 zh = "图片尺寸列"
 
 [desc]
-en = "Adds a column with the width and height of PNG and JPEG images to the file list."
-zh = "在文件列表中添加一列，显示 PNG 与 JPEG 图片的宽和高。"
+en = "Adds a column with the width and height of PNG and JPEG images to the file list"
+zh = "在文件列表中添加一列，显示 PNG 与 JPEG 图片的宽和高"
