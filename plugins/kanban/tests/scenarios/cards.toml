@@ -1,0 +1,54 @@
+name = "New cards, by Enter and by the button, show on every board page"
+
+# Two board pages, as in two windows: both show the same board.
+[[steps]]
+open-page = "board"
+
+[[steps]]
+open-page = "board"
+expect-tree-contains = { key = "add", disabled = true }
+
+[[steps]]
+page = 1
+type = { into = "new", text = "Write report" }
+expect-tree-contains = { key = "add", disabled = false }
+
+# Enter in the field adds the card and empties the field.
+[[steps]]
+submit = "new"
+expect-text = { key = "new", text = "" }
+expect-children = { key = "col-todo", keys = ["title-todo", "c1"] }
+
+[[steps]]
+page = 2
+type = { into = "new", text = "Review PR" }
+
+[[steps]]
+click = "add"
+expect-children = { key = "col-todo", keys = ["title-todo", "c1", "c2"] }
+
+[[steps]]
+page = 1
+type = { into = "new", text = "Plan sprint" }
+
+[[steps]]
+submit = "new"
+expect-children = [
+  { key = "col-todo", keys = ["title-todo", "c1", "c2", "c3"] },
+  { key = "col-doing", keys = ["title-doing"] },
+  { key = "col-done", keys = ["title-done"] },
+]
+expect-text = [{ key = "title-todo", text = "To do (3)" }, { key = "c3", text = "Plan sprint" }]
+
+[[steps]]
+page = 2
+expect-children = { key = "col-todo", keys = ["title-todo", "c1", "c2", "c3"] }
+expect-text = { key = "c2", text = "Review PR" }
+
+# A field of blanks adds nothing.
+[[steps]]
+type = { into = "new", text = "   " }
+
+[[steps]]
+submit = "new"
+expect-children = { key = "col-todo", keys = ["title-todo", "c1", "c2", "c3"] }

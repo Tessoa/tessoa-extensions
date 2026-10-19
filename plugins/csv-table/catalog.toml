@@ -1,0 +1,10 @@
+# Texts for the extension catalog entry of this plugin.
+min_host = "0.29.0"
+
+[name]
+en = "CSV table"
+zh = "CSV 表格"
+
+[desc]
+en = "Opens a CSV file as a table that sorts by any column and copies the selected rows."
+zh = "以表格打开 CSV 文件，可按任意列排序并复制选中的行。"

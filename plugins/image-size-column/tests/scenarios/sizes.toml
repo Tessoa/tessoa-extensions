@@ -1,0 +1,27 @@
+# The image-size column: the width and height of PNG and JPEG images, as text
+# that sorts by the number of pixels. expect-column asks the column for these
+# files of the scenario's folder, as tessoa does for the rows on screen.
+name = "Shows the size of PNG and JPEG images"
+
+[[files]]
+from = "images/wide.png"
+
+[[files]]
+from = "images/icon.png"
+
+# A photo: its EXIF block comes before the frame header.
+[[files]]
+from = "images/photo.jpg"
+
+# A progressive JPEG; the manifest's extensions match in any case.
+[[files]]
+from = "images/scan.jpeg"
+as = "SCAN.JPEG"
+
+[[steps]]
+expect-column = { column = "dimensions", files = ["wide.png", "icon.png", "photo.jpg", "SCAN.JPEG"], values = [
+  { text = "1920×1080", key = 2073600 },
+  { text = "32×32", key = 1024 },
+  { text = "4032×3024", key = 12192768 },
+  { text = "2480×3508", key = 8699840 },
+] }

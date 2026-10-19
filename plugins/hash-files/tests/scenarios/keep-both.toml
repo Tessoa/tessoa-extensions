@@ -1,0 +1,19 @@
+# Hash files: a report of the same name is there already. The plugin cannot
+# replace it; tessoa asks the user, who keeps both, and the new report gets a
+# number.
+name = "Keeps the old report and numbers the new one"
+command = "hash-files"
+pick-folder = "."
+answer-conflict = "keep-both"
+
+[[files]]
+from = "text/three-lines.txt"
+
+[[files]]
+from = "text/empty.txt"
+as = "SHA256SUMS.txt"
+selected = false
+
+[expect]
+files = ["SHA256SUMS (2).txt", "SHA256SUMS.txt", "three-lines.txt"]
+notifications = [{ title = "Hash files", body-contains = "Saved SHA256SUMS (2).txt in " }]

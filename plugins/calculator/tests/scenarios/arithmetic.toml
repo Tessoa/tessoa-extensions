@@ -1,0 +1,55 @@
+name = "Adds, multiplies and divides, by button and by key"
+
+[[steps]]
+open-page = "calculator"
+expect-text = [{ key = "display", text = "0" }, { key = "pending", text = "" }]
+
+[[steps]]
+click = "k1"
+expect-text = { key = "display", text = "1" }
+
+[[steps]]
+click = "k2"
+expect-text = { key = "display", text = "12" }
+
+[[steps]]
+click = "add"
+expect-text = [{ key = "display", text = "12" }, { key = "pending", text = "12 +" }]
+
+[[steps]]
+key = "3"
+expect-text = { key = "display", text = "3" }
+
+[[steps]]
+key = "Enter"
+expect-text = [{ key = "display", text = "15" }, { key = "pending", text = "" }]
+
+[[steps]]
+click = "mul"
+expect-text = { key = "pending", text = "15 ×" }
+
+[[steps]]
+click = "k2"
+
+[[steps]]
+click = "dot"
+expect-text = { key = "display", text = "2." }
+
+[[steps]]
+click = "k5"
+expect-text = { key = "display", text = "2.5" }
+
+[[steps]]
+click = "eq"
+expect-text = { key = "display", text = "37.5" }
+
+[[steps]]
+click = "div"
+
+[[steps]]
+key = "7"
+
+# Results are rounded to ten decimals.
+[[steps]]
+key = "="
+expect-text = { key = "display", text = "5.3571428571" }

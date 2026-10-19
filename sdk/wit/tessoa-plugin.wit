@@ -1,0 +1,1348 @@
+// Plugin interface for tessoa.
+//
+// Version 0.2 covers context-menu commands that work on the files the user
+// selected; pages: whole tabs, or sections of the sidebar, that a plugin
+// describes and tessoa draws; long tasks that run beside the pages; columns
+// for tessoa's file list; settings that tessoa shows and keeps; and
+// connections to the websites a plugin lists.
+//
+// Rules that every interface here follows:
+//
+// - Plugins never see paths. The host hands out numeric handles for the files
+//   the user selected for a command; the handles expire when the command
+//   returns. A file the plugin wants to keep beyond that becomes a file
+//   reference, which the host issues and stores; again the plugin sees a
+//   number, never the path.
+// - Anything that changes the file system is a request to the host. The host
+//   applies its own conflict handling, recycle bin, undo and activity log.
+// - Dialogs in a command block: `confirm` returns after the user pressed a
+//   button. The runner suspends the plugin while it waits, so the host stays
+//   responsive. Pages never block: a page asks with `pages-host.ask` and the
+//   answer arrives later as an event. Every function that waits for the user
+//   or for the network has a `-start` twin for pages that returns at once,
+//   its answer arriving as an event.
+// - Once the interface is published this file only grows: new interfaces,
+//   new functions, new types. Existing signatures and the types they use do
+//   not change, and a synchronous function never becomes asynchronous. That
+//   is why every error type has a case that carries a message: reasons that
+//   later versions add arrive there.
+
+package tessoa:plugin@0.2.0;
+
+/// Plugin log. Lines go to the plugin log panel and the plugin log file.
+/// Available without declaring a permission.
+interface log {
+    enum level {
+        debug,
+        info,
+        warn,
+        error,
+    }
+
+    /// Write one line to the plugin log.
+    log: func(level: level, message: string);
+}
+
+/// Notifications and dialogs. The host draws them with its own widgets, so they
+/// follow the theme, the UI scale and the language.
+/// Available without declaring a permission.
+interface ui {
+    /// Show a notification and return immediately.
+    notify: func(title: string, body: string);
+
+    /// Ask a yes/no question and wait for the answer.
+    /// Returns true when the user pressed the `ok-label` button.
+    /// A page must not wait: in a page call this returns false at once and
+    /// the call is reported as refused. Pages ask with `pages-host.ask`,
+    /// which `tessoa.ui.confirm` in TypeScript does by itself in a page.
+    confirm: func(title: string, body: string, ok-label: string, cancel-label: string) -> bool;
+
+    /// Like `confirm`, with one line per item shown between the body and the
+    /// buttons. Use it to preview a batch change before applying it.
+    confirm-list: func(title: string, body: string, items: list<string>, ok-label: string, cancel-label: string) -> bool;
+
+    /// The language tessoa shows its interface in, as a short code such as
+    /// `en`, `zh`, `ja` or `de`. Use it to pick the plugin's own texts.
+    language: func() -> string;
+
+    /// Offer to open a web address in the user's browser. tessoa shows the
+    /// whole address and opens it only when the user agrees; the address
+    /// need not be declared anywhere. Only `http` and `https` addresses are
+    /// accepted, and only while the plugin handles something the user just
+    /// did: a command, or a click, a key or a menu choice on a page. At
+    /// other times, and while the plugin's previous offer is still on
+    /// screen, the call fails with the reason.
+    open-url: func(url: string) -> result<_, string>;
+
+    /// Open the plugin's page in tessoa's settings, where the settings the
+    /// manifest declares are. Does nothing for a plugin without settings.
+    open-settings: func();
+}
+
+/// The files the user hands to the plugin: the ones selected for the current
+/// command, the ones picked in tessoa's file picker, and new files in a folder
+/// the user picked.
+interface files {
+    /// Identifies one selected file for the duration of the current command.
+    /// Handles are issued by the host when the command starts and are invalid
+    /// after it returns.
+    type handle = u32;
+
+    /// Identifies a file the host keeps for the plugin, across commands and
+    /// across restarts. References come from the user: a file kept with
+    /// `keep`, a file dropped on a page, a file picked with `pick-files`, or
+    /// a file the plugin created with `create-file`. The plugin sees the
+    /// number only.
+    type file-ref = u64;
+
+    /// Identifies a folder the user picked for the plugin to create files
+    /// in. It is valid until the plugin stops or tessoa restarts, or until
+    /// `release-folder`; the plugin sees its name, never its path.
+    type folder = u64;
+
+    record file-info {
+        handle: handle,
+        /// File name without the directory. Plugins never see the directory.
+        name: string,
+        /// Size in bytes.
+        size: u64,
+        /// Last modification time as Unix epoch milliseconds.
+        modified-ms: s64,
+        is-dir: bool,
+    }
+
+    variant error {
+        /// The handle or reference was not issued to this plugin, or is no
+        /// longer valid.
+        not-granted(string),
+        /// The manifest does not declare the permission this call needs.
+        permission-denied(string),
+        /// The file system or the host reported an error.
+        io(string),
+        /// The request cannot be carried out as made, for example a path
+        /// with `..` in it, or a call a page cannot make. Carries the reason.
+        invalid(string),
+    }
+
+    /// The files that were selected when the command was triggered.
+    selected: func() -> list<file-info>;
+
+    /// Read up to `max-len` bytes starting at `offset`.
+    /// Requires the `files.read-selected` permission; in `columns.values`,
+    /// the `files.read-listed` permission.
+    read: func(handle: handle, offset: u64, max-len: u32) -> result<list<u8>, error>;
+
+    record rename-request {
+        handle: handle,
+        /// New file name without the directory. Names that contain a path
+        /// separator or `..` are rejected.
+        new-name: string,
+    }
+
+    variant rename-outcome {
+        /// Renamed. Carries the final name; the host may have changed it to
+        /// resolve a conflict.
+        renamed(string),
+        /// Nothing to do, for example because the name did not change.
+        /// Carries the reason.
+        skipped(string),
+        /// Failed. Carries the reason.
+        failed(string),
+    }
+
+    /// Ask the host to rename files. One outcome per request, in order; one
+    /// failure does not stop the others.
+    /// Requires the `files.rename-selected` permission.
+    rename: func(items: list<rename-request>) -> result<list<rename-outcome>, error>;
+
+    /// Turn a selected file into a reference that stays valid after the
+    /// command returns, and after tessoa restarts. The host follows the file
+    /// when tessoa moves or renames it.
+    /// Requires the `files.keep` permission.
+    keep: func(handle: handle) -> result<file-ref, error>;
+
+    /// What `create-file` did.
+    variant create-outcome {
+        /// Created. Carries a reference to the new file, whose name has a
+        /// number added when the user chose to keep both.
+        created(file-ref),
+        /// Not created: the user chose to skip it because a file of that
+        /// name exists. Carries the reason.
+        skipped(string),
+    }
+
+    /// Let the user pick files in tessoa's file picker, and wait for the
+    /// choice. `extensions` limits the files offered, without the dot, such
+    /// as `csv`; empty offers every file. Returns references to the picked
+    /// files, read with `refs.read`; empty when the user cancelled. A page
+    /// cannot wait, and calls `pick-files-start` instead.
+    pick-files: func(title: string, extensions: list<string>, multiple: bool) -> result<list<file-ref>, error>;
+
+    /// `pick-files` for a page: returns at once with a call id, and the
+    /// choice arrives as a `picked-files` event of the page. Only a page can
+    /// call it.
+    pick-files-start: func(title: string, extensions: list<string>, multiple: bool) -> result<u64, error>;
+
+    /// Let the user pick a folder, and wait for the choice; none when the
+    /// user cancelled. The plugin can create files in the folder with
+    /// `create-file`, and nothing else. A page calls `pick-folder-start`.
+    pick-folder: func(title: string) -> result<option<folder>, error>;
+
+    /// `pick-folder` for a page: the choice arrives as a `picked-folder`
+    /// event. Only a page can call it.
+    pick-folder-start: func(title: string) -> result<u64, error>;
+
+    /// The name of a picked folder, without the directories above it.
+    folder-name: func(folder: folder) -> result<string, error>;
+
+    /// Forget a picked folder; creating files in it fails afterwards.
+    release-folder: func(folder: folder);
+
+    /// Create a file in a picked folder, and wait until it is written.
+    /// `path` is relative to the folder and written with `/`, such as
+    /// `report.csv` or `2026/report.csv`; missing folders on the way are
+    /// created. A path with `..`, a drive, a backslash, a name Windows
+    /// reserves (such as `con`) or a name that ends in a dot or a space is
+    /// refused as `invalid`. At most 64 MiB. An existing file is never
+    /// replaced: when the name is taken, tessoa asks the user whether to keep
+    /// both, with a number added to the new name, or to skip it. The new file
+    /// is in tessoa's undo and activity log. A page calls
+    /// `create-file-start`.
+    /// Requires the `files.create` permission.
+    create-file: func(folder: folder, path: string, data: list<u8>) -> result<create-outcome, error>;
+
+    /// `create-file` for a page: returns at once with a call id, and the
+    /// outcome arrives as a `created` event of the page. Only a page can
+    /// call it.
+    /// Requires the `files.create` permission.
+    create-file-start: func(folder: folder, path: string, data: list<u8>) -> result<u64, error>;
+}
+
+/// Files the host keeps for the plugin. Every function works on references
+/// issued to this plugin; any other reference is refused.
+interface refs {
+    use files.{file-ref, error};
+
+    record ref-info {
+        ref: file-ref,
+        /// File name without the directory.
+        name: string,
+        /// Size in bytes; 0 for a folder or a file that is gone.
+        size: u64,
+        /// Last modification time as Unix epoch milliseconds.
+        modified-ms: s64,
+        is-dir: bool,
+        /// False when the file is no longer where the host last saw it.
+        exists: bool,
+    }
+
+    /// What happened to one file of a copy, a move or a delete.
+    variant transfer-outcome {
+        /// Copied, moved, or moved to the recycle bin.
+        done,
+        /// Left alone, for example because the user cancelled. Carries the
+        /// reason.
+        skipped(string),
+        /// Failed. Carries the reason.
+        failed(string),
+    }
+
+    /// Describe references. References that were never issued to this plugin,
+    /// or were released, are left out of the result.
+    info: func(refs: list<file-ref>) -> list<ref-info>;
+
+    /// Read up to `max-len` bytes of a referenced file, starting at `offset`:
+    /// a file the user dropped on a page or picked, or one the plugin kept or
+    /// created.
+    /// Requires the `files.read-selected` permission.
+    read: func(ref: file-ref, offset: u64, max-len: u32) -> result<list<u8>, error>;
+
+    /// Forget references. The files themselves are not touched.
+    release: func(refs: list<file-ref>);
+
+    /// Let the user pick a folder and copy the files there, with tessoa's
+    /// progress, conflict handling and undo. Returns at once with a transfer
+    /// id; the outcome arrives as a `transfer-done` event of the page that
+    /// made the call.
+    /// Requires the `files.transfer` permission.
+    copy-to-picked: func(refs: list<file-ref>) -> result<u64, error>;
+
+    /// Like `copy-to-picked`, moving instead of copying. The references
+    /// follow the files.
+    /// Requires the `files.transfer` permission.
+    move-to-picked: func(refs: list<file-ref>) -> result<u64, error>;
+
+    /// Open the file the way a double click in tessoa would.
+    /// Requires the `files.open` permission.
+    open: func(ref: file-ref) -> result<_, error>;
+
+    /// Show the file in a new tessoa tab, selected.
+    /// Requires the `files.open` permission.
+    reveal: func(ref: file-ref) -> result<_, error>;
+
+    /// Move the files to the recycle bin (the Trash on macOS). tessoa always
+    /// asks the user first, in its own dialog that names the plugin; the
+    /// plugin cannot skip that. Returns at once with a transfer id; the
+    /// outcome arrives as a `transfer-done` event of the page that made the
+    /// call.
+    /// Requires the `files.delete` permission.
+    trash: func(refs: list<file-ref>) -> result<u64, error>;
+}
+
+/// The plugin's own storage: keys and values that survive restarts, are
+/// shared by all of the plugin's pages and commands, and go with tessoa's
+/// settings backup. At most 1 MiB in total, keys and values counted; one
+/// value at most 256 KiB, one key at most 128 bytes.
+/// Available without declaring a permission.
+interface storage {
+    enum error {
+        /// The value, or the storage as a whole, would exceed its limit.
+        quota,
+        /// The key is longer than 128 bytes.
+        key-too-long,
+    }
+
+    /// The value stored under `key`, if any.
+    get: func(key: string) -> option<list<u8>>;
+
+    /// Store `value` under `key`, replacing what was there.
+    set: func(key: string, value: list<u8>) -> result<_, error>;
+
+    /// Remove `key`. Removing a key that does not exist does nothing.
+    remove: func(key: string);
+
+    /// Every key, in byte order.
+    keys: func() -> list<string>;
+}
+
+/// The system clipboard.
+interface clipboard {
+    use files.{error};
+
+    /// Put text on the clipboard.
+    /// Requires the `clipboard.write` permission.
+    write-text: func(text: string) -> result<_, error>;
+}
+
+/// The plugin's settings: the options `[[settings]]` in `plugin.toml`
+/// declares. tessoa shows them in its settings, checks and keeps the values;
+/// the plugin only reads them, without a round trip. A setting the user never
+/// changed has the default the manifest gives. When the user changes
+/// settings, `plugin.on-event` hears of it.
+/// Available without declaring a permission.
+interface settings {
+    /// The type of a declared setting: `flag`, `choice`, `number` or `text`;
+    /// none for an id the manifest does not declare.
+    kind: func(id: string) -> option<string>;
+
+    /// The value of a `flag` setting. False for any other id; an id the
+    /// manifest does not declare also writes a line to the plugin log.
+    flag: func(id: string) -> bool;
+
+    /// The value of a `number` setting, within its minimum and maximum and
+    /// on its step. 0 for any other id, as with `flag`.
+    number: func(id: string) -> f64;
+
+    /// The value of a `text` setting, or the id of the chosen option of a
+    /// `choice` setting. Empty for any other id, as with `flag`.
+    text: func(id: string) -> string;
+}
+
+/// Images the plugin makes, for `image` nodes and image cells. The bytes go
+/// to tessoa once, when the image is added; pages refer to it by number. The
+/// numbers are valid until the plugin stops: a plugin that starts again adds
+/// its images again, so a page's state should not keep them.
+/// Available without declaring a permission.
+interface images {
+    variant error {
+        /// The plugin's images would take more than 64 MiB once decoded;
+        /// remove some first.
+        quota,
+        /// The data is not an image tessoa reads, or it is too large.
+        /// Carries the reason.
+        invalid(string),
+    }
+
+    /// Add an image from the bytes of a PNG, JPEG, GIF (its first frame),
+    /// WebP, BMP or SVG file: at most 8 MiB, and at most 4096 by 4096 pixels.
+    /// Returns its number.
+    add: func(data: list<u8>) -> result<u64, error>;
+
+    /// Add an image from pixels: `width` times `height` times 4 bytes of
+    /// red, green, blue and alpha, row by row from the top. At most 4096 by
+    /// 4096 pixels. Returns its number.
+    add-rgba: func(width: u32, height: u32, data: list<u8>) -> result<u64, error>;
+
+    /// Remove an image. Nodes and cells that still name it show an empty
+    /// frame.
+    remove: func(id: u64);
+}
+
+/// Connections to the websites `plugin.toml` lists under `[permissions] net`,
+/// which tessoa shows the user when the plugin is installed; nothing else can
+/// be reached. The runner makes the requests: tessoa does not see what is
+/// sent or received.
+/// Available only to a plugin that lists websites under `[permissions] net`.
+interface net {
+    record request {
+        /// `GET`, `POST`, `PUT`, `PATCH`, `DELETE` or `HEAD`.
+        method: string,
+        /// An `https` address on a listed website, or an `http` address on
+        /// this computer when the manifest lists it.
+        url: string,
+        headers: list<tuple<string, string>>,
+        /// At most 8 MiB.
+        body: list<u8>,
+        /// 0 for the default of 30 seconds; at most 120 seconds.
+        timeout-ms: u32,
+    }
+
+    record response {
+        status: u16,
+        headers: list<tuple<string, string>>,
+        /// At most 32 MiB.
+        body: list<u8>,
+        /// The address that answered, after redirects.
+        url: string,
+    }
+
+    variant error {
+        /// The address is not on a listed website, or a redirect left them,
+        /// or a listed name leads to an address on this computer or the local
+        /// network. Carries the reason.
+        not-allowed(string),
+        /// No answer within the time limit.
+        timeout,
+        /// The answer is larger than 32 MiB, or the request larger than
+        /// 8 MiB.
+        too-large,
+        /// The connection or the request failed. Carries the reason.
+        failed(string),
+    }
+
+    /// Make a request and wait for the answer. Redirects are followed, at
+    /// most 5, each to a listed website. No cookies are kept and nothing is
+    /// cached. At most 8 requests of a plugin are under way at once. A page
+    /// cannot wait, and calls `fetch-start` instead.
+    fetch: func(req: request) -> result<response, error>;
+
+    /// `fetch` for a page: returns at once with a request id, and the
+    /// answer arrives as a `fetched` event of the page. Only a page can call
+    /// it.
+    fetch-start: func(req: request) -> result<u64, error>;
+
+    /// Abandon a request made with `fetch-start`; its `fetched` event does
+    /// not arrive.
+    cancel: func(id: u64);
+}
+
+/// Long tasks. A task runs in a second instance of the plugin, a worker,
+/// while the plugin's pages keep working; the worker's `task-runner.run`
+/// receives the input and returns the result. The worker shares the plugin's
+/// storage, file references, settings, images and picked folders, but not its
+/// variables: whatever it needs goes into the input. tessoa shows every task
+/// in its transfer panel, where the user can cancel it.
+/// Available without declaring a permission.
+interface tasks {
+    /// How far a task is, as the worker reported it with `task.progress`.
+    record task-progress {
+        task: u64,
+        done: f64,
+        /// 0 when the total is not known.
+        total: f64,
+        text: string,
+    }
+
+    /// How a task ended.
+    variant task-outcome {
+        /// `run` returned these bytes.
+        done(list<u8>),
+        /// `run` returned an error, or the worker stopped. Carries the
+        /// reason.
+        failed(string),
+        /// The user or the plugin cancelled the task.
+        cancelled,
+    }
+
+    /// Start a task of the given kind: a worker's `run` receives `kind` and
+    /// `input` (at most 1 MiB). `title` is shown in tessoa's transfer panel
+    /// after the plugin's name. Returns the task id; progress and the outcome
+    /// arrive through `plugin.on-event`. At most 4 tasks of a plugin run at
+    /// once, and the others wait their turn. A task started by a command can
+    /// use the files the command was given until it ends. Not available in a
+    /// worker.
+    start: func(kind: string, title: string, input: list<u8>) -> result<u64, string>;
+
+    /// Cancel a task: `task.cancelled` turns true in its worker, and a worker
+    /// that has not returned 2 seconds later is stopped. A task that has
+    /// ended, or that the plugin did not start, is left alone.
+    cancel: func(task: u64);
+}
+
+/// What a worker uses while it runs a task. Outside a worker the functions do
+/// nothing, and `cancelled` is false.
+/// Available without declaring a permission.
+interface task {
+    /// Report progress: `done` of `total`, and a line of text for tessoa's
+    /// transfer panel; `total` 0 means the total is not known. Report after
+    /// every item: a worker that does not call the host for 60 seconds is
+    /// stopped. tessoa shows at most 10 reports a second.
+    progress: func(done: f64, total: f64, text: string);
+
+    /// Whether the task was cancelled. A worker checks between items, cleans
+    /// up and returns.
+    cancelled: func() -> bool;
+}
+
+/// What every plugin exports.
+interface plugin {
+    use tasks.{task-progress, task-outcome};
+
+    /// Something that concerns the plugin as a whole rather than one page.
+    variant plugin-event {
+        /// A task reported progress; at most 5 times a second per task.
+        task-progress(task-progress),
+        /// A task ended. Carries the task id and the outcome.
+        task-done(tuple<u64, task-outcome>),
+        /// The user changed settings. Carries their ids.
+        settings-changed(list<string>),
+    }
+
+    /// Run one of the commands declared in the manifest. The error text goes
+    /// to the plugin log and is shown to the user.
+    run-command: func(command-id: string) -> result<_, string>;
+
+    /// Something happened; see `plugin-event`. Called in the plugin's own
+    /// instance, never in a worker.
+    on-event: func(ev: plugin-event);
+}
+
+/// What a worker runs. Every plugin exports it; a plugin without tasks
+/// answers that it has none.
+interface task-runner {
+    /// Run a task of `kind` with the `input` given to `tasks.start`. The
+    /// result (at most 1 MiB) or the error reaches the plugin's own instance
+    /// as `task-done`. A worker may wait: `pick-files`, `create-file`,
+    /// `net.fetch` and `ui.confirm` wait for their answer here. It cannot
+    /// touch pages.
+    run: func(kind: string, input: list<u8>) -> result<list<u8>, string>;
+}
+
+/// Values for the columns `[[columns]]` in `plugin.toml` declares, which the
+/// user can add to tessoa's file list. tessoa asks only for the files on
+/// screen, at most 64 at a time, keeps the answers, and asks again when a
+/// file changes. The values are computed in a worker, as for a task. Every
+/// plugin exports it; a plugin without columns answers with empty values.
+interface columns {
+    use files.{handle};
+
+    /// One file of the file list. The handle is valid during this call
+    /// only; reading the file needs the `files.read-listed` permission.
+    record column-file {
+        handle: handle,
+        /// File name without the directory.
+        name: string,
+        /// Size in bytes; 0 for a folder.
+        size: u64,
+        /// Last modification time as Unix epoch milliseconds.
+        modified-ms: s64,
+        is-dir: bool,
+    }
+
+    /// The value of one cell. Numbers, sizes and dates are written by
+    /// tessoa, the way its own columns write them.
+    variant column-value {
+        /// Nothing to show; sorts last.
+        empty,
+        /// Text; sorts the way tessoa sorts names.
+        text(string),
+        number(f64),
+        /// A size in bytes.
+        size(u64),
+        /// A time as Unix epoch milliseconds.
+        date(s64),
+        /// Text that sorts by a number, such as `1920×1080` by the pixel
+        /// count.
+        sorted-text(tuple<string, f64>),
+    }
+
+    /// The values of `column` for `files`: one per file, in order. A list
+    /// of another length counts as empty values.
+    values: func(column: string, files: list<column-file>) -> list<column-value>;
+}
+
+/// What the host does for a plugin's pages.
+/// Available without declaring a permission.
+interface pages-host {
+    /// Identifies one open page. The host issues it when the page opens; it
+    /// is unique among all open pages of all plugins.
+    type page-id = u64;
+
+    /// Ask for the page to be rendered again. The host calls `render` once
+    /// the current call into the plugin returns, at most 20 times a second
+    /// per page; several requests in between are one render.
+    invalidate: func(page: page-id);
+
+    /// Open a page of this plugin, declared in the manifest under `kind`,
+    /// where the first place of its `where` says: a new tab, or a new
+    /// section of the sidebar. A page declared `single` that is already
+    /// open in the window is focused instead, and its id returned; `args`
+    /// then reach no page. From a command, the page opens in the window the
+    /// command ran in.
+    open: func(kind: string, args: option<list<u8>>) -> result<page-id, string>;
+
+    /// Change the page's title, shown on its tab or its sidebar section.
+    set-title: func(page: page-id, title: string);
+
+    /// Ask a yes/no question on behalf of a page. Returns at once with a
+    /// dialog id; the answer arrives as a `dialog` event of that page. With
+    /// items, the dialog shows one line per item, like `ui.confirm-list`.
+    /// Returns 0 when the page is not open.
+    ask: func(page: page-id, title: string, body: string, items: list<string>, ok-label: string, cancel-label: string) -> u64;
+}
+
+/// What a plugin with pages exports. A page is a whole tab, or a section of
+/// the sidebar: the plugin describes its content as a tree of nodes, tessoa
+/// draws it with its own widgets, and tells the plugin what the user did.
+/// The description is the whole page every time; tessoa compares it with
+/// the previous one and keeps what the user typed, scrolled and focused,
+/// matched by node keys.
+///
+/// A control shows the value the page gives it. When the user changes it,
+/// tessoa sends an event and shows the new value until the page has handled
+/// the event; then it shows what the page renders, so a page that keeps the
+/// old value puts the control back. A text field is the exception: it keeps
+/// what the user typed until the page gives it another value.
+interface pages {
+    use pages-host.{page-id};
+    use files.{file-ref, folder, create-outcome, error};
+    use refs.{transfer-outcome};
+    use net.{response, error as net-error};
+
+    /// One page, flattened: every node names its parent by position in
+    /// `nodes`. The first node is the root and the only node without a
+    /// parent; a parent always comes before its children, and children
+    /// appear in their order on screen. At most 4096 nodes, at most 64
+    /// levels deep (the root is level 0, its children level 1), and 1 MiB.
+    record tree {
+        /// The title on the page's tab or sidebar section. None keeps the
+        /// title from the manifest or from `pages-host.set-title`.
+        title: option<string>,
+        /// Keys the page handles while it has the focus and no text field is
+        /// focused. A key is written the way it types: a character such as
+        /// `8`, `+` or `a` (`A` with Shift), or one of the names `Enter`,
+        /// `Escape`, `Backspace`, `Delete`, `Tab`, `Space`, `ArrowUp`,
+        /// `ArrowDown`, `ArrowLeft`, `ArrowRight`, `Home`, `End`, `PageUp`,
+        /// `PageDown` and `F1` to `F12`. `Ctrl+`, `Alt+` and `Meta+` in front
+        /// add a modifier, for example `Ctrl+z`; `Shift+` does so in front of
+        /// a name only, for example `Shift+Tab`. Every other key works as it
+        /// does elsewhere in tessoa, and so do Ctrl+Shift combinations and
+        /// Ctrl+Tab, which a page cannot take.
+        keys: list<string>,
+        /// Bytes the host keeps for the page and hands back to `open` when
+        /// tessoa restarts or the page is reloaded. At most 16 KiB; more is
+        /// dropped and logged.
+        state: option<list<u8>>,
+        nodes: list<node>,
+    }
+
+    record node {
+        /// Position of the parent in `tree.nodes`; none for the root.
+        parent: option<u32>,
+        /// Names the node in events and keeps its state across renders.
+        /// Unique within the page. Nodes that the user interacts with need
+        /// one; items of a list should have one.
+        key: option<string>,
+        kind: node-kind,
+        layout: layout,
+        /// A small menu: right-clicking the node opens it, and so does a
+        /// left click on a button or an icon button that has one, which
+        /// then sends no `click`. The choice arrives as a `menu` event.
+        menu: list<menu-item>,
+        /// A line shown when the pointer rests on the node, at most 1 KiB.
+        /// An icon button without one shows its label, an image its `alt`.
+        tooltip: option<string>,
+    }
+
+    record menu-item {
+        id: string,
+        label: string,
+        disabled: bool,
+        /// Drawn in the warning colour, for destructive choices.
+        danger: bool,
+        /// A separator line follows this item.
+        separator-after: bool,
+    }
+
+    /// How a node takes space inside its parent and arranges its children.
+    record layout {
+        /// Take a share of the length the parent has left along its
+        /// direction. Children that grow get equal shares whatever their
+        /// content, as with CSS `flex: 1 1 0`, but none gets less than its
+        /// content needs.
+        grow: bool,
+        w: size-hint,
+        h: size-hint,
+        /// Space inside the node, around its children.
+        pad: space,
+        /// Space between the children.
+        gap: space,
+        /// Placement of the children across the parent's direction.
+        align: align,
+        /// Placement of the children along the parent's direction.
+        justify: justify,
+        /// Children that do not fit continue on the next line.
+        wrap: bool,
+        /// The node scrolls when its children do not fit.
+        scroll: bool,
+    }
+
+    variant size-hint {
+        /// As large as the content.
+        auto,
+        /// As large as the parent allows.
+        fill,
+        /// A fixed size in units of the current font size.
+        em(f32),
+    }
+
+    enum space { none, xs, s, m, l }
+
+    enum align { start, center, end, stretch }
+
+    enum justify { start, center, end, between }
+
+    enum text-size { caption, body, title, display }
+
+    enum text-align { start, center, end }
+
+    enum tone {
+        normal,
+        dim,
+        accent,
+        danger,
+        success,
+    }
+
+    enum button-kind {
+        normal,
+        primary,
+        danger,
+        /// No frame until hovered.
+        quiet,
+    }
+
+    /// What a drop zone takes.
+    enum accepts {
+        /// Files dragged from tessoa or from other programs.
+        files,
+        /// Draggable nodes of the same page.
+        items,
+        both,
+    }
+
+    variant node-kind {
+        /// Children top to bottom.
+        column,
+        /// Children left to right.
+        row,
+        /// A column with a frame and a background.
+        card,
+        /// A thin line across the parent.
+        divider,
+        /// Empty space; with `grow`, pushes its siblings apart.
+        spacer,
+        text(text-props),
+        /// Sends `click` with the node's key.
+        button(button-props),
+        /// A button that shows only its icon; the label becomes its tooltip.
+        icon-button(button-props),
+        /// Sends `input` on every change and `submit` on Enter, or Ctrl+Enter
+        /// when it has several lines.
+        text-input(input-props),
+        /// Sends `toggle` with the new state.
+        checkbox(check-props),
+        /// One file, drawn by tessoa: icon, name, size, a dimmed look when
+        /// the file is gone. Double click opens it, it can be dragged out,
+        /// and its context menu is tessoa's file menu.
+        file-row(file-row-props),
+        /// Its children are a target for dragged files or items; a drop sends
+        /// `drop` with the zone's key.
+        drop-zone(drop-props),
+        /// Its children can be dragged onto drop zones of the same page.
+        /// Give it a key, such as the id of the item it shows: a drop names
+        /// the draggable it landed in front of by that key, and never names
+        /// one without a key.
+        draggable(drag-props),
+        /// A button showing the chosen option; clicking it opens the
+        /// options. Sends `choose`.
+        dropdown(choice-props),
+        /// The options one below the other, each with a round mark. Sends
+        /// `choose`.
+        radio-group(choice-props),
+        /// The options side by side as joined buttons. Sends `choose`.
+        segmented(choice-props),
+        /// A row of tabs. Only the tabs: the page shows what belongs to the
+        /// chosen one below them. Sends `choose`.
+        tabs(choice-props),
+        /// An on/off switch. Sends `toggle` with the new state.
+        switch(check-props),
+        /// A number field with up and down arrows. Sends `value` on Enter,
+        /// when it loses the focus, and on the arrows; not while typing.
+        number-input(number-props),
+        /// Sends `value` while it is dragged, and once more when it is let go.
+        slider(slider-props),
+        progress(progress-props),
+        image(image-props),
+        /// Text with bold, italic and code spans and links.
+        rich-text(rich-props),
+        /// A swatch with the colour's code; clicking it opens a colour
+        /// picker. Sends `color`.
+        color-picker(color-props),
+        /// A button showing the date; clicking it opens a calendar. Sends
+        /// `date`.
+        date-picker(date-props),
+        /// Rows from `rows`, one column; tessoa asks only for the rows on
+        /// screen, so a list can be long. Give it a key.
+        %list(list-props),
+        /// A list with columns under a header that can sort and resize them.
+        table(list-props),
+        /// A list whose rows have levels and can expand; the page decides
+        /// which rows exist, `rows` describes them with their depth.
+        tree(list-props),
+        /// Its children in a grid, filled row by row.
+        grid(grid-props),
+        /// A title that opens and closes the children below it. Sends
+        /// `toggle` with the new state.
+        fold(fold-props),
+        /// Exactly two children side by side, or one above the other, with a
+        /// bar between them that the user can drag; tessoa remembers where.
+        /// Sends `split` when the bar is let go.
+        split(split-props),
+        /// Its children in a panel over the page; only one popup of a page
+        /// is open at a time. Escape, a click outside and its close button
+        /// send `dismiss`; it closes when the page sets `open` to false.
+        popup(popup-props),
+    }
+
+    record text-props {
+        text: string,
+        size: text-size,
+        tone: tone,
+        /// Break lines to fit the width instead of cutting the text off.
+        wrap: bool,
+        align: text-align,
+    }
+
+    record button-props {
+        label: string,
+        kind: button-kind,
+        /// A name from tessoa's icon set, drawn in the user's theme. Names:
+        /// `plus`, `close`, `arrow-left`, `arrow-right`, `arrow-up`,
+        /// `arrow-down`, `chevron-down`, `chevron-right`, `check`, `search`,
+        /// `menu`, `more`, `reload`, `undo`, `copy`, `cut`, `paste`,
+        /// `new-folder`, `rename`, `delete`, `play`, `note`, `sliders`,
+        /// `eye`, `sun`, `gear`, `image`, `keyboard`, `monitor`, `info`,
+        /// `pin`, `question`, `tag`, `filter`, `puzzle`. Later versions only
+        /// add names. A name tessoa does not know shows the puzzle piece.
+        icon: option<string>,
+        disabled: bool,
+    }
+
+    record input-props {
+        value: string,
+        placeholder: string,
+        disabled: bool,
+        /// Several lines: Enter starts a new line, Ctrl+Enter submits.
+        multiline: bool,
+    }
+
+    record check-props {
+        checked: bool,
+        label: string,
+    }
+
+    record file-row-props {
+        file: file-ref,
+        selected: bool,
+        /// The row can be dragged out as a file.
+        draggable: bool,
+    }
+
+    record drop-props {
+        accepts: accepts,
+        /// Shown in the zone while nothing is dragged over it.
+        hint: option<string>,
+    }
+
+    record drag-props {
+        /// Delivered to the drop zone's `drop` event.
+        payload: string,
+    }
+
+    /// One option of a dropdown, a radio group, segmented buttons or tabs.
+    record choice-option {
+        /// Names the option in `value` and in `choose` events. Unique within
+        /// the node.
+        id: string,
+        label: string,
+        /// A name from tessoa's icon set, as for `button-props.icon`.
+        icon: option<string>,
+        disabled: bool,
+    }
+
+    record choice-props {
+        /// The id of the chosen option, or an empty string for none.
+        value: string,
+        /// At most 256.
+        options: list<choice-option>,
+        disabled: bool,
+    }
+
+    record number-props {
+        /// Shown within `min` and `max`.
+        value: f64,
+        min: f64,
+        max: f64,
+        /// What the arrows and the arrow keys add or take; a typed number is
+        /// rounded to it. Greater than 0.
+        step: f64,
+        /// Digits shown after the decimal point.
+        decimals: u8,
+        /// Shown dimmed after the number, such as `px` or `%`.
+        suffix: string,
+        disabled: bool,
+    }
+
+    record slider-props {
+        /// Shown within `min` and `max`.
+        value: f64,
+        min: f64,
+        max: f64,
+        /// The values the slider stops at, from `min` on. Greater than 0.
+        step: f64,
+        /// Upright, with `min` at the bottom.
+        vertical: bool,
+        disabled: bool,
+    }
+
+    record progress-props {
+        /// How far, from 0 to 1; none when it is not known, which shows a
+        /// moving bar.
+        value: option<f32>,
+    }
+
+    variant image-src {
+        /// A PNG, JPEG, GIF, WebP, BMP or SVG file in the plugin's directory,
+        /// written with `/`, such as `images/logo.png`.
+        file(string),
+        /// An image the plugin added with `images.add` or `images.add-rgba`.
+        added(u64),
+    }
+
+    /// How an image fills its node, as CSS `object-fit`.
+    enum fit {
+        /// Whole, as large as fits, keeping its shape.
+        contain,
+        /// Covering the node, keeping its shape; the rest is cut off.
+        cover,
+        /// Stretched to the node.
+        fill,
+        /// At its own size.
+        none,
+    }
+
+    record image-props {
+        src: image-src,
+        fit: fit,
+        /// Says what the image shows; its tooltip when the node has none.
+        alt: string,
+    }
+
+    /// Where a link of rich text leads.
+    variant link {
+        /// A web address, `http` or `https`. tessoa asks the user before it
+        /// opens it in the browser; the page hears nothing of it.
+        url(string),
+        /// Handled by the page: a click sends `link` with this id.
+        action(string),
+    }
+
+    /// A stretch of rich text in one style.
+    record span {
+        text: string,
+        bold: bool,
+        italic: bool,
+        /// In a fixed-width font on a faint background.
+        code: bool,
+        tone: tone,
+        link: option<link>,
+    }
+
+    record rich-props {
+        /// At most 2048, with at most 64 KiB of text together.
+        spans: list<span>,
+        size: text-size,
+        /// Break lines to fit the width instead of cutting the text off.
+        wrap: bool,
+        align: text-align,
+    }
+
+    record color-props {
+        /// `0xrrggbb`.
+        value: u32,
+        disabled: bool,
+    }
+
+    /// A day of the calendar.
+    record date {
+        /// 1 to 9999.
+        year: u16,
+        /// 1 to 12.
+        month: u8,
+        /// 1 to the last day of the month.
+        day: u8,
+    }
+
+    record date-props {
+        /// None shows an empty button.
+        value: option<date>,
+        /// Days before `min` or after `max` cannot be chosen.
+        min: option<date>,
+        max: option<date>,
+        disabled: bool,
+    }
+
+    /// How rows of a list, a table or a tree can be selected.
+    enum selection {
+        /// Not at all; Enter and a double click still send `activate`.
+        none,
+        single,
+        multi,
+    }
+
+    /// A column of a table. A list or a tree uses its first column only.
+    record column {
+        /// Names the column in `sort` and `row-check` events. Unique within
+        /// the node, not empty.
+        id: string,
+        /// Shown in the table's header.
+        title: string,
+        /// The width the column starts with; the user can drag it, and
+        /// tessoa remembers it.
+        width: size-hint,
+        align: text-align,
+        /// A click on the header sends `sort`.
+        sortable: bool,
+    }
+
+    record sort-state {
+        /// The id of a sortable column.
+        column: string,
+        descending: bool,
+    }
+
+    record list-props {
+        /// How many rows there are, at most 1,000,000. tessoa asks for the
+        /// ones on screen with `rows`.
+        count: u32,
+        /// At most 32.
+        columns: list<column>,
+        selection: selection,
+        /// Selects these rows by id, replacing what the user selected, when
+        /// it differs from what the previous render gave; none leaves the
+        /// selection to the user. At most 10,000.
+        selected: option<list<string>>,
+        /// The column the page sorted its rows by, shown as an arrow in the
+        /// header; tessoa does not sort.
+        sort: option<sort-state>,
+        /// Each row has a second, dimmed line: its `detail`.
+        two-line: bool,
+        /// Shown when there are no rows.
+        empty: option<string>,
+    }
+
+    record grid-props {
+        /// Children per row, 1 to 32. A column is as wide as its widest
+        /// child; room to spare is shared equally.
+        columns: u32,
+    }
+
+    record fold-props {
+        title: string,
+        /// The children show. Closed, they stay in the tree but are not
+        /// drawn.
+        open: bool,
+    }
+
+    record split-props {
+        /// The share of the first child, between 0 and 1. tessoa keeps where
+        /// the user dragged the bar, until the page gives another ratio.
+        ratio: f32,
+        /// One above the other instead of side by side.
+        vertical: bool,
+    }
+
+    record popup-props {
+        open: bool,
+        /// A title line with a close button.
+        title: option<string>,
+        /// The key of a node to show the popup below; none centres it on the
+        /// page.
+        anchor: option<string>,
+        width: size-hint,
+    }
+
+    /// Whether a row of a tree has children, and whether they show.
+    enum expander {
+        none,
+        collapsed,
+        expanded,
+    }
+
+    record cell-text {
+        /// The first 1 KiB shows; more is cut off.
+        text: string,
+        tone: tone,
+        /// A name from tessoa's icon set, before the text.
+        icon: option<string>,
+    }
+
+    /// One cell of a row.
+    variant cell {
+        empty,
+        text(cell-text),
+        /// A file issued to the plugin, drawn as in tessoa's file list: it
+        /// opens on a double click, can be dragged out, and has tessoa's
+        /// file menu.
+        file(file-ref),
+        /// A small picture.
+        image(image-src),
+        /// A checkbox; a click on it sends `row-check`.
+        check(bool),
+        /// A progress bar, from 0 to 1.
+        progress(f32),
+    }
+
+    /// A button at the end of a row, shown while the pointer is over the
+    /// row. A click sends `row-action`.
+    record row-action {
+        id: string,
+        /// A name from tessoa's icon set.
+        icon: string,
+        /// Its tooltip.
+        label: string,
+    }
+
+    /// One row of a list, a table or a tree. Rows are data, not nodes: they
+    /// have neither keys nor layouts, and have the same height.
+    record row {
+        /// Names the row in events; the selection follows it when rows move.
+        /// At most 128 bytes, unique within the list.
+        id: string,
+        /// One per column, in order.
+        cells: list<cell>,
+        /// The second line, when the list has `two-line`.
+        detail: option<string>,
+        /// The level in a tree, 0 at the top. Lists and tables ignore it.
+        depth: u8,
+        expander: expander,
+        /// At most 4.
+        actions: list<row-action>,
+        tone: tone,
+    }
+
+    record key-press {
+        /// The key, written as the page declared it.
+        key: string,
+        ctrl: bool,
+        shift: bool,
+        alt: bool,
+        /// The Command key on macOS, the Windows key on Windows.
+        meta: bool,
+    }
+
+    variant drop-payload {
+        /// Files, already turned into references for this plugin.
+        files(list<file-ref>),
+        /// A draggable node of the page: its payload, and the key of the
+        /// draggable it was dropped in front of, none at the end. Only the
+        /// zone's own children that are draggable and have a key count, and
+        /// never the one being dragged.
+        item(tuple<string, option<string>>),
+    }
+
+    /// The expander of a tree's row was clicked.
+    record expand-event {
+        /// The key of the tree.
+        %list: string,
+        /// The id of the row.
+        row: string,
+        /// True to show its children.
+        open: bool,
+    }
+
+    /// A sortable column's header was clicked: first ascending, then the
+    /// other way round. The page sorts and renders `sort` to match.
+    record sort-event {
+        /// The key of the table.
+        %list: string,
+        column: string,
+        descending: bool,
+    }
+
+    /// The checkbox of a row's cell was clicked.
+    record row-check-event {
+        %list: string,
+        row: string,
+        column: string,
+        /// The new state.
+        checked: bool,
+    }
+
+    /// A button at the end of a row was clicked.
+    record row-action-event {
+        %list: string,
+        row: string,
+        /// The id of the `row-action`.
+        action: string,
+    }
+
+    variant page-event {
+        /// A button was pressed. Carries the node key.
+        click(string),
+        /// Enter in a text field. Carries the node key.
+        submit(string),
+        /// The text of a field changed. Carries the node key and the new text.
+        input(tuple<string, string>),
+        /// A checkbox changed. Carries the node key and the new state.
+        toggle(tuple<string, bool>),
+        /// A declared key was pressed.
+        key(key-press),
+        /// Something was dropped on a drop zone. Carries the zone's key.
+        drop(tuple<string, drop-payload>),
+        /// A copy, move or delete the page started has ended. Carries the
+        /// transfer id and one outcome per file, in order.
+        transfer-done(tuple<u64, list<transfer-outcome>>),
+        /// The user answered `pages-host.ask`. Carries the dialog id and
+        /// true for the ok button.
+        dialog(tuple<u64, bool>),
+        /// A menu item was chosen. Carries the node key and the item id.
+        menu(tuple<string, string>),
+        /// The page came into view (true) or went out of view: as a tab, it
+        /// became the visible tab of its pane or stopped being it; in the
+        /// sidebar, its section was shown or hidden.
+        activated(bool),
+        /// An option of a dropdown, a radio group, segmented buttons or tabs
+        /// was chosen. Carries the node key and the option id.
+        choose(tuple<string, string>),
+        /// A number input or a slider changed. Carries the node key and the
+        /// new value, within the node's range and on its step. While a slider
+        /// is dragged, only the latest value waits to be delivered.
+        value(tuple<string, f64>),
+        /// A colour was picked. Carries the node key and `0xrrggbb`; while
+        /// the picker is dragged, only the latest waits to be delivered.
+        color(tuple<string, u32>),
+        /// A date was chosen, or cleared. Carries the node key and the date.
+        date(tuple<string, option<date>>),
+        /// The bar of a split was let go. Carries the node key and the share
+        /// of the first child.
+        split(tuple<string, f32>),
+        /// A link of rich text with an `action` was clicked. Carries the node
+        /// key and the action.
+        link(tuple<string, string>),
+        /// The user closed a popup: Escape, a click outside it or its close
+        /// button. Carries the node key. The popup stays open until the page
+        /// sets `open` to false.
+        dismiss(string),
+        /// The selected rows of a list changed. Carries the node key and the
+        /// ids of the selected rows, in the order of the rows.
+        select(tuple<string, list<string>>),
+        /// A row was opened: double click or Enter. Carries the node key and
+        /// the row id.
+        activate(tuple<string, string>),
+        expand(expand-event),
+        sort(sort-event),
+        row-check(row-check-event),
+        row-action(row-action-event),
+        /// The user picked files for `files.pick-files-start`. Carries the
+        /// call id and references to the files, empty when cancelled.
+        picked-files(tuple<u64, list<file-ref>>),
+        /// The user picked a folder for `files.pick-folder-start`. Carries
+        /// the call id and the folder, none when cancelled.
+        picked-folder(tuple<u64, option<folder>>),
+        /// A file of `files.create-file-start` was created, skipped or
+        /// refused. Carries the call id and the outcome.
+        created(tuple<u64, result<create-outcome, error>>),
+        /// The answer to `net.fetch-start`. Carries the request id and the
+        /// response.
+        fetched(tuple<u64, result<response, net-error>>),
+    }
+
+    /// A page opens: newly, when tessoa restores it after a restart, or when
+    /// it is reloaded after the plugin stopped. `state` is what the last
+    /// render returned; `args` are what `pages-host.open` passed. An error
+    /// is shown in place of the page.
+    open: func(page: page-id, kind: string, state: option<list<u8>>, args: option<list<u8>>) -> result<_, string>;
+
+    /// Something happened on the page. An error goes to the plugin log; the
+    /// page stays open.
+    event: func(page: page-id, ev: page-event) -> result<_, string>;
+
+    /// Describe the page. Called after `open` and after calls that
+    /// invalidated the page. An error, or a tree that breaks the rules of
+    /// `tree`, closes the page and shows the message in its place.
+    render: func(page: page-id) -> result<tree, string>;
+
+    /// The page closed. Its id is not used again for this plugin.
+    close: func(page: page-id);
+
+    /// Rows of the list, table or tree with the key `list`: up to `count`
+    /// rows from row `start`, fewer at the end. tessoa asks for the rows on
+    /// screen and a screen above and below them, at most 2000 at a time, at
+    /// most 1 MiB. Describe each row from the page's data; the same data
+    /// gives the same row.
+    rows: func(page: page-id, %list: string, start: u32, count: u32) -> result<list<row>, string>;
+
+    /// The ids of rows, without the rest of them: for selecting a range of
+    /// rows, or all rows, the user has not scrolled to.
+    row-ids: func(page: page-id, %list: string, start: u32, count: u32) -> result<list<string>, string>;
+}
+
+/// World for plugins compiled to a component directly, for example from Rust.
+world tessoa-plugin {
+    import log;
+    import ui;
+    import files;
+    import refs;
+    import storage;
+    import clipboard;
+    import settings;
+    import images;
+    import net;
+    import tasks;
+    import task;
+    export plugin;
+    export task-runner;
+    export columns;
+}
+
+/// World for plugins with pages: everything in `tessoa-plugin`, plus pages.
+world tessoa-plugin-pages {
+    include tessoa-plugin;
+    import pages-host;
+    export pages;
+}
+
+/// Used by the JavaScript engine component only. Plugin authors never see it.
+interface script-source {
+    /// The plugin's bundled JavaScript source, read by the host from the file
+    /// named in the manifest.
+    get-script: func() -> string;
+}
+
+/// World for the JavaScript engine component.
+world tessoa-js-engine {
+    include tessoa-plugin-pages;
+    import script-source;
+}

@@ -1,0 +1,8 @@
+# Build output, at the root and in every plugin
+target/
+dist/
+node_modules/
+
+# Left behind only when an upgrade of sdk/ is interrupted
+/sdk.staging/
+/sdk.old/

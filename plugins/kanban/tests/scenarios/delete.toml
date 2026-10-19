@@ -1,0 +1,62 @@
+name = "Deleting asks first, and both pages keep working until the answer"
+
+[[steps]]
+open-page = "board"
+
+[[steps]]
+open-page = "board"
+
+[[steps]]
+page = 1
+type = { into = "new", text = "Write report" }
+
+[[steps]]
+submit = "new"
+
+[[steps]]
+type = { into = "new", text = "Review PR" }
+
+[[steps]]
+submit = "new"
+
+[[steps]]
+page = 2
+menu = { on = "card-c2", item = "delete" }
+expect-dialog = { title = "Delete card", body-contains = "Review PR" }
+expect-children = { key = "col-todo", keys = ["title-todo", "c1", "c2"] }
+
+# While the question waits, page 1 adds a card and page 2 moves one.
+[[steps]]
+page = 1
+type = { into = "new", text = "Write tests" }
+
+[[steps]]
+submit = "new"
+expect-children = { key = "col-todo", keys = ["title-todo", "c1", "c2", "c3"] }
+
+[[steps]]
+page = 2
+drop-item = { onto = "col-doing", payload = "c3" }
+
+# The user confirms: the card is gone from both pages.
+[[steps]]
+answer = "ok"
+expect-children = [
+  { key = "col-todo", keys = ["title-todo", "c1"] },
+  { key = "col-doing", keys = ["title-doing", "c3"] },
+]
+
+[[steps]]
+page = 1
+expect-children = [
+  { key = "col-todo", keys = ["title-todo", "c1"] },
+  { key = "col-doing", keys = ["title-doing", "c3"] },
+]
+
+# Cancel keeps the card.
+[[steps]]
+menu = { on = "card-c1", item = "delete" }
+
+[[steps]]
+answer = "cancel"
+expect-children = { key = "col-todo", keys = ["title-todo", "c1"] }

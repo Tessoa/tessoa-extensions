@@ -1,0 +1,21 @@
+# Hash files: the user cancels the task in tessoa's transfer panel. The task
+# looks between the pieces it reads, stops, and asks for no folder. Steps run
+# the command and cancel its task; a step's tasks stand still until a step
+# waits for them, so the task is still running after the first step.
+name = "Stops when the user cancels it, and saves nothing"
+
+[[files]]
+from = "text/three-lines.txt"
+
+[[files]]
+from = "text/no-final-newline.txt"
+
+[[steps]]
+run = "hash-files"
+expect-task = { task = 1, title = "SHA-256 of 2 files", state = "running" }
+
+[[steps]]
+cancel-task = 1
+expect-task = { task = 1, state = "cancelled" }
+expect-log = "cancelled after 0 of 2 files"
+expect-created = []

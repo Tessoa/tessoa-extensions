@@ -1,0 +1,22 @@
+[package]
+name = "hash-files"
+description = "Hash the selected files in a task and save a report"
+edition = "2024"
+version = "1.0.0"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+tessoa-plugin-sdk = { path = "../../sdk/rust" }
+sha2 = "0.11"
+
+# tessoa-plugin builds with --release. A panic aborts, which the sandbox
+# reports as a crash of the command.
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

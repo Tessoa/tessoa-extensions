@@ -1,0 +1,10 @@
+# Texts for the extension catalog entry of this plugin.
+min_host = "0.29.0"
+
+[name]
+en = "Hash files"
+zh = "文件哈希"
+
+[desc]
+en = "Computes the SHA-256 or SHA-512 hash of the selected files and saves them as a report."
+zh = "计算选中文件的 SHA-256 或 SHA-512 哈希值，并保存为报告。"

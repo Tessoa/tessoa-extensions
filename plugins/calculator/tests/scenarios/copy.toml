@@ -1,0 +1,32 @@
+name = "Copies the shown number, with the button and with Ctrl+c"
+
+[[steps]]
+open-page = "calculator"
+
+[[steps]]
+click = "k6"
+
+[[steps]]
+click = "mul"
+expect-text = { key = "pending", text = "6 ×" }
+
+[[steps]]
+click = "k7"
+
+[[steps]]
+click = "eq"
+expect-text = [{ key = "display", text = "42" }, { key = "pending", text = "" }]
+
+[[steps]]
+click = "copy"
+expect-clipboard = "42"
+
+[[steps]]
+key = "Ctrl+c"
+expect-clipboard = "42"
+
+# The display does not change when it is copied.
+[[steps]]
+key = "Meta+c"
+expect-clipboard = "42"
+expect-text = { key = "display", text = "42" }

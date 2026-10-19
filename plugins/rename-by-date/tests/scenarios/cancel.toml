@@ -1,0 +1,15 @@
+name = "Changes nothing when the user cancels"
+command = "rename-by-date"
+
+[[files]]
+from = "photos/IMG_0001.jpg"
+
+[[dialogs]]
+kind = "confirm-list"
+items-count = 1
+answer = "cancel"
+
+[expect]
+files = ["IMG_0001.jpg"]
+notifications = []
+log-contains = ["cancelled by the user"]

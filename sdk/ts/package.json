@@ -1,0 +1,24 @@
+{
+  "name": "@tessoa/plugin-sdk",
+  "version": "0.1.0",
+  "description": "Type declarations and the JSX runtime for writing tessoa plugins in TypeScript",
+  "private": true,
+  "type": "module",
+  "types": "types/tessoa.d.ts",
+  "exports": {
+    ".": {
+      "types": "./types/tessoa.d.ts"
+    },
+    "./jsx-runtime": {
+      "types": "./jsx-runtime.d.ts",
+      "default": "./jsx-runtime.js"
+    }
+  },
+  "files": [
+    "types",
+    "jsx-runtime.js",
+    "jsx-runtime.d.ts",
+    "README.md"
+  ],
+  "license": "SEE LICENSE IN README.md"
+}

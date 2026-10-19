@@ -1,0 +1,78 @@
+# The JSON viewer: a picked file as a tree whose objects and arrays open
+# when the user asks; the selected entry's path and value show beside it.
+name = "Opens a JSON file, opens its objects and arrays, shows an entry"
+
+[[files]]
+from = "json/catalog.json"
+
+[[steps]]
+open-page = "json"
+expect-rows = { on = "json", count = 0 }
+
+[[steps]]
+click = "open"
+pick-files = ["catalog.json"]
+expect-title = "catalog.json"
+expect-rows = { on = "json", count = 8, ids = [
+  "$.name", "$.version", "$.private", "$.keywords", "$.author", "$.plugins", "$.released", "$.size",
+], texts = [
+  "name: \"tessoa\"", "version: \"0.29.0\"", "private: true", "keywords: [3 items]",
+  "author: {2 keys}", "plugins: [2 items]", "released: null", "size: 12.5",
+] }
+
+# An array's entries are read when it opens.
+[[steps]]
+expand = { on = "json", row = "$.plugins" }
+expect-rows = { on = "json", count = 10, from = 5, ids = ["$.plugins", "$.plugins[0]", "$.plugins[1]", "$.released"] }
+
+[[steps]]
+expand = { on = "json", row = "$.plugins[1]" }
+expect-rows = { on = "json", from = 7, texts = [
+  "1: {4 keys}", "id: \"com.example.shelf\"", "pages: 1", "commands: 1", "notes: \"Keeps files for later\"",
+] }
+
+[[steps]]
+click-row = { on = "json", row = "$.plugins[1].notes" }
+expect-text = [
+  { key = "path", text = "$.plugins[1].notes" },
+  { key = "value", text = "\"Keeps files for later\"" },
+]
+
+[[steps]]
+click = "copy-path"
+expect-clipboard = "$.plugins[1].notes"
+
+# Enter on an object closes it, as its expander does.
+[[steps]]
+click-row = { on = "json", row = "$.plugins[1]" }
+
+[[steps]]
+key = "Enter"
+expect-rows = { on = "json", count = 10 }
+
+[[steps]]
+click = "copy-value"
+expect-clipboard = """
+{
+  "id": "com.example.shelf",
+  "pages": 1,
+  "commands": 1,
+  "notes": "Keeps files for later"
+}"""
+
+# The arrows walk the tree: Right opens the row with the focus, Left goes up.
+[[steps]]
+click-row = { on = "json", row = "$.author" }
+
+[[steps]]
+key = "ArrowRight"
+expect-rows = { on = "json", from = 4, ids = ["$.author", "$.author.name", "$.author.url", "$.plugins"] }
+
+[[steps]]
+key = "ArrowRight"
+expect-selected = { on = "json", ids = ["$.author.name"] }
+expect-text = { key = "value", text = "\"Example\"" }
+
+[[steps]]
+key = "ArrowLeft"
+expect-selected = { on = "json", ids = ["$.author"] }

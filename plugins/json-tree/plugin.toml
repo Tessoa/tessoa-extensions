@@ -1,0 +1,20 @@
+[plugin]
+id = "com.tessoa.json-tree"
+name = "JSON viewer"
+version = "1.0.0"
+api = "tessoa:plugin@0.2.0"
+min-host = "0.29.0"
+
+[entry]
+kind = "js"
+file = "dist/plugin.js"
+
+[[pages]]
+id = "json"
+title = "JSON viewer"
+title-zh = "JSON 查看器"
+icon = "note"
+
+[permissions]
+files = ["read-selected"]
+clipboard = ["write"]

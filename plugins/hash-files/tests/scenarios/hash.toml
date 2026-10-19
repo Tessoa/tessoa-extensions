@@ -1,0 +1,31 @@
+# Hash files: the command starts a task and returns; the task hashes the
+# selected files, asks for a folder and saves the report there. The tasks a
+# command starts run to their end before [expect] is checked, and what the
+# task asks is answered at the top, as for the command itself.
+name = "Hashes the selected files and saves the report in the picked folder"
+command = "hash-files"
+pick-folder = "reports"
+
+[[files]]
+from = "text/three-lines.txt"
+
+[[files]]
+from = "text/no-final-newline.txt"
+
+[[files]]
+from = "text/empty.txt"
+
+[[files]]
+from = "text/three-lines.txt"
+as = "not-selected.txt"
+selected = false
+
+[expect]
+files = ["empty.txt", "no-final-newline.txt", "not-selected.txt", "reports", "three-lines.txt"]
+notifications = [{ title = "Hash files", body = "Saved SHA256SUMS.txt in reports: 3 files." }]
+log-contains = [
+  "b6285c57e8797db5d4c51c80d6f11938afda9b11c6a003549709189e9b4b92a2  three-lines.txt",
+  "4252f8d56b4bb236d0b1bc95a1202e392ca84ce0644bf628398fbb9517287da8  no-final-newline.txt",
+  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  empty.txt",
+]
+log-not-contains = ["not-selected.txt"]

@@ -1,0 +1,14 @@
+{
+  "name": "rename-by-date",
+  "version": "1.0.0",
+  "description": "Rename the selected photos after their capture date",
+  "private": true,
+  "scripts": {
+    "build": "tsc --noEmit && esbuild ./src/plugin --bundle --format=iife --global-name=plugin --target=es2020 --jsx=automatic --jsx-import-source=@tessoa/plugin-sdk --outfile=dist/plugin.js"
+  },
+  "devDependencies": {
+    "@tessoa/plugin-sdk": "file:../../sdk/ts",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,18 @@
+# Hash files: the algorithm is the user's setting, read by the task when it
+# starts; the report is named after it.
+name = "Uses the algorithm the user chose in the settings"
+command = "hash-files"
+pick-folder = "."
+
+[settings]
+algorithm = "sha512"
+
+[[files]]
+from = "text/three-lines.txt"
+
+[expect]
+files = ["SHA512SUMS.txt", "three-lines.txt"]
+notifications = [{ title = "Hash files", body-contains = "Saved SHA512SUMS.txt in " }]
+log-contains = [
+  "4379c7e10619d0e4867e9c18a140a1420c8cb3510e040e2930651c1b1aabb0a668ba9d234875d98fd0d01f5486dd03079c99bc80440f76d1d7c6adf6356b299c  three-lines.txt",
+]

@@ -1,0 +1,56 @@
+# The CSV table: pick a file, see its rows, sort them by a column.
+name = "Opens a picked CSV file and sorts it by a column"
+
+[[files]]
+from = "csv/people.csv"
+
+[[steps]]
+open-page = "csv"
+expect-rows = { on = "rows", count = 0 }
+expect-tree-contains = { key = "copy", disabled = true }
+
+# The page waits for the picker without holding up; the same step answers it.
+[[steps]]
+click = "open"
+pick-files = ["people.csv"]
+expect-title = "people.csv"
+expect-text = { key = "status", text = "25 rows" }
+expect-rows = { on = "rows", count = 25, ids = ["r0", "r1", "r2"], cells = [
+  ["Ada Lovelace", "London", "36", "2021-03-04"],
+  ["Alan Turing", "Wilmslow", "41", "2020-11-12"],
+  ["Grace Hopper", "New York", "85", "2019-06-30"],
+] }
+
+# A quoted cell keeps its comma and its quotes.
+[[steps]]
+scroll = { on = "rows", row = 3 }
+expect-rows = { on = "rows", from = 3, texts = ["Wilkes, Maurice"] }
+
+[[steps]]
+scroll = { on = "rows", row = 7 }
+expect-rows = { on = "rows", from = 7, texts = ["John \"Jack\" Kilby"] }
+
+[[steps]]
+scroll = { on = "rows", row = 0 }
+
+# The ages are numbers: they sort as numbers, and the empty one comes last.
+# Equal ages keep the order of the file.
+[[steps]]
+sort = { on = "rows", column = "c2" }
+expect-rows = { on = "rows", texts = ["Ada Lovelace", "Alan Turing", "John von Neumann", "Anita Borg"] }
+
+[[steps]]
+scroll = { on = "rows", row = 22 }
+expect-rows = { on = "rows", from = 22, texts = ["Margaret Hamilton", "Katherine Johnson", "Wilkes, Maurice"] }
+
+[[steps]]
+scroll = { on = "rows", row = 0 }
+
+[[steps]]
+sort = { on = "rows", column = "c2" }
+expect-rows = { on = "rows", texts = ["Katherine Johnson", "Frances Allen", "Margaret Hamilton", "Donald Knuth"] }
+
+# Names sort as text, whatever their case.
+[[steps]]
+sort = { on = "rows", column = "c0" }
+expect-rows = { on = "rows", texts = ["Ada Lovelace", "Alan Turing", "Anita Borg", "Barbara Liskov"] }

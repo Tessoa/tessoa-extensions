@@ -1,0 +1,6 @@
+name = "Says so when nothing is selected"
+command = "rename-by-date"
+
+[expect]
+files = []
+notifications = [{ title = "Rename by capture date", body = "No files selected." }]

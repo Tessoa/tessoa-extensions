@@ -1,0 +1,36 @@
+name = "Renames photos after their capture date"
+command = "rename-by-date"
+
+[[files]]
+from = "photos/IMG_0001.jpg"
+
+[[files]]
+from = "photos/IMG_0002.JPG"
+
+[[files]]
+from = "photos/DSC_9999.jpeg"
+
+[[files]]
+from = "photos/noexif.jpg"
+modified = "2025-01-15T08:05:00Z"
+
+[[files]]
+from = "photos/notes.txt"
+selected = false
+
+[[dialogs]]
+kind = "confirm-list"
+title = "Rename by capture date"
+body-contains = "4 files"
+items = [
+  "IMG_0001.jpg  ->  2026-10-03_1422.jpg",
+  "IMG_0002.JPG  ->  2026-10-03_1422_2.jpg",
+  "DSC_9999.jpeg  ->  2024-12-31_2359.jpeg",
+  "noexif.jpg  ->  2025-01-15_0805.jpg",
+]
+answer = "ok"
+
+[expect]
+files = ["2024-12-31_2359.jpeg", "2025-01-15_0805.jpg", "2026-10-03_1422.jpg", "2026-10-03_1422_2.jpg", "notes.txt"]
+notifications = [{ title = "Rename by capture date", body = "Renamed 4 of 4 files." }]
+log-contains = ["4 files selected", "IMG_0001.jpg -> 2026-10-03_1422.jpg", "noexif.jpg has no capture date"]

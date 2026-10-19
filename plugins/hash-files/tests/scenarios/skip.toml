@@ -1,0 +1,18 @@
+# Hash files: a report of the same name is there already, and the user skips
+# the new one. Nothing is replaced.
+name = "Saves nothing when the user skips the report"
+command = "hash-files"
+pick-folder = "."
+answer-conflict = "skip"
+
+[[files]]
+from = "text/three-lines.txt"
+
+[[files]]
+from = "text/empty.txt"
+as = "SHA256SUMS.txt"
+selected = false
+
+[expect]
+files = ["SHA256SUMS.txt", "three-lines.txt"]
+notifications = [{ title = "Hash files", body-contains = "The hashes were not saved: " }]

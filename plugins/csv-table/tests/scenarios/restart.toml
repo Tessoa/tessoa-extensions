@@ -1,0 +1,28 @@
+# The CSV table: the page saves the file and the order. A picked file is a
+# file reference, valid after a restart, so the page reads it again.
+name = "Shows the same file in the same order after a restart"
+
+[[files]]
+from = "csv/people.csv"
+
+[[steps]]
+open-page = "csv"
+
+[[steps]]
+click = "open"
+pick-files = ["people.csv"]
+
+[[steps]]
+sort = { on = "rows", column = "c1" }
+expect-rows = { on = "rows", texts = ["Ken Thompson", "Leslie Lamport", "John von Neumann"] }
+
+[[steps]]
+restart = true
+expect-title = "people.csv"
+expect-rows = { on = "rows", count = 25, texts = ["Ken Thompson", "Leslie Lamport", "John von Neumann"] }
+
+# Cancelling the picker leaves the table as it was.
+[[steps]]
+click = "open"
+pick-files = []
+expect-rows = { on = "rows", count = 25 }

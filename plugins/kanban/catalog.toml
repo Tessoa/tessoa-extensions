@@ -1,0 +1,10 @@
+# Texts for the extension catalog entry of this plugin.
+min_host = "0.29.0"
+
+[name]
+en = "Task board"
+zh = "任务看板"
+
+[desc]
+en = "A board of cards in three columns, shared by all windows and kept across restarts."
+zh = "分三列管理卡片的看板，各窗口共用，重启后保留。"

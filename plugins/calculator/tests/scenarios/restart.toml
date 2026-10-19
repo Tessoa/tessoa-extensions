@@ -1,0 +1,25 @@
+name = "Shows the same number and operation after tessoa restarts"
+
+[[steps]]
+open-page = "calculator"
+
+[[steps]]
+click = "k4"
+
+[[steps]]
+click = "k2"
+
+[[steps]]
+click = "add"
+expect-text = { key = "pending", text = "42 +" }
+
+[[steps]]
+restart = true
+expect-text = [{ key = "display", text = "42" }, { key = "pending", text = "42 +" }]
+
+[[steps]]
+click = "k8"
+
+[[steps]]
+click = "eq"
+expect-text = { key = "display", text = "50" }

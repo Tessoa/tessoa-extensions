@@ -1,0 +1,38 @@
+name = "Backspace takes the last digit back, Escape clears"
+
+[[steps]]
+open-page = "calculator"
+
+[[steps]]
+key = "9"
+
+[[steps]]
+key = "8"
+expect-text = { key = "display", text = "98" }
+
+[[steps]]
+key = "Backspace"
+expect-text = { key = "display", text = "9" }
+
+[[steps]]
+key = "Backspace"
+expect-text = { key = "display", text = "0" }
+
+[[steps]]
+click = "k7"
+
+[[steps]]
+click = "sub"
+expect-text = { key = "pending", text = "7 −" }
+
+[[steps]]
+key = "Escape"
+expect-text = [{ key = "display", text = "0" }, { key = "pending", text = "" }]
+
+# The C button does what Escape does.
+[[steps]]
+click = "k4"
+
+[[steps]]
+click = "clear"
+expect-text = { key = "display", text = "0" }

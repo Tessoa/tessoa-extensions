@@ -1,0 +1,46 @@
+# The CSV table: rows the user selects go to the clipboard, by button and by
+# key, with tabs between the cells.
+name = "Copies the selected rows"
+
+[[files]]
+from = "csv/people.csv"
+
+[[steps]]
+open-page = "csv"
+
+[[steps]]
+click = "open"
+pick-files = ["people.csv"]
+
+[[steps]]
+click-row = { on = "rows", row = "r1" }
+expect-selected = { on = "rows", ids = ["r1"] }
+expect-tree-contains = { key = "copy", disabled = false }
+
+[[steps]]
+click-row = { on = "rows", row = "r2", shift = true }
+
+[[steps]]
+click = "copy"
+expect-clipboard = "name\tcity\tage\tjoined\nAlan Turing\tWilmslow\t41\t2020-11-12\nGrace Hopper\tNew York\t85\t2019-06-30"
+expect-text = { key = "status", text = "Copied 2 rows" }
+
+# The table has the focus and leaves Ctrl+C to the page, which declares it.
+[[steps]]
+click-row = { on = "rows", row = "r0" }
+
+[[steps]]
+key = "Ctrl+c"
+expect-clipboard = "name\tcity\tage\tjoined\nAda Lovelace\tLondon\t36\t2021-03-04"
+
+# The selection follows the rows when they are sorted.
+[[steps]]
+sort = { on = "rows", column = "c2" }
+expect-selected = { on = "rows", ids = ["r0"] }
+
+# Opening the file again starts with nothing selected.
+[[steps]]
+click = "open"
+pick-files = ["people.csv"]
+expect-selected = { on = "rows", ids = [] }
+expect-tree-contains = { key = "copy", disabled = true }

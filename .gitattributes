@@ -1,0 +1,24 @@
+# Text files are stored with LF. The ones below stay LF in the working tree
+# too: shell scripts must, and sdk/ is replaced by upgrades with LF files, which
+# would otherwise show up as changed on every line.
+* text=auto
+*.sh text eol=lf
+*.md text eol=lf
+*.toml text eol=lf
+*.json text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.rs text eol=lf
+*.wit text eol=lf
+*.lock text eol=lf
+# Page icons drawn as SVG.
+*.svg text eol=lf
+sdk/** text eol=lf
+
+# Scenarios compare fixture files byte for byte, so they are never converted.
+**/tests/fixtures/** -text
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.wasm binary
+*.zip binary

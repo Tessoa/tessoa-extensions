@@ -1,0 +1,20 @@
+[plugin]
+id = "com.tessoa.rename-by-date"
+name = "Rename by capture date"
+version = "1.0.0"
+api = "tessoa:plugin@0.2.0"
+min-host = "0.29.0"
+
+[entry]
+kind = "js"
+file = "dist/plugin.js"
+
+[[commands]]
+id = "rename-by-date"
+title = "Rename by capture date"
+title-zh = "按拍摄日期重命名"
+where = ["context-menu"]
+when = { ext = ["jpg", "jpeg", "heic", "png"], min-selected = 1 }
+
+[permissions]
+files = ["read-selected", "rename-selected"]

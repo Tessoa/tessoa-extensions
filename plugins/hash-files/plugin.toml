@@ -1,0 +1,33 @@
+[plugin]
+id = "com.tessoa.hash-files"
+name = "Hash files"
+version = "1.0.0"
+api = "tessoa:plugin@0.2.0"
+min-host = "0.29.0"
+
+[entry]
+kind = "wasm"
+file = "dist/plugin.wasm"
+
+[[commands]]
+id = "hash-files"
+title = "Hash files"
+title-zh = "计算哈希"
+where = ["context-menu"]
+when = { min-selected = 1 }
+
+[[settings]]
+id = "algorithm"
+title = "Algorithm"
+title-zh = "算法"
+description = "The hash of each file, and the name of the report."
+description-zh = "每个文件算哪种哈希，也决定报告的文件名。"
+type = "choice"
+default = "sha256"
+choices = [
+  { id = "sha256", title = "SHA-256" },
+  { id = "sha512", title = "SHA-512" },
+]
+
+[permissions]
+files = ["read-selected", "create"]

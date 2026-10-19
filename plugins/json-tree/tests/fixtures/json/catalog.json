@@ -1,0 +1,13 @@
+{
+  "name": "tessoa",
+  "version": "0.29.0",
+  "private": true,
+  "keywords": ["files", "explorer", "gpu"],
+  "author": { "name": "Example", "url": "https://example.com/" },
+  "plugins": [
+    { "id": "com.example.calculator", "pages": 1, "commands": 0 },
+    { "id": "com.example.shelf", "pages": 1, "commands": 1, "notes": "Keeps files for later" }
+  ],
+  "released": null,
+  "size": 12.5
+}

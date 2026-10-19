@@ -1,0 +1,34 @@
+# The JSON viewer: a file that is not JSON says so and leaves the tree empty;
+# after a restart the page reads its file again.
+name = "Says what is wrong with a file, and reopens its file after a restart"
+
+[[files]]
+from = "json/broken.json"
+
+[[files]]
+from = "json/catalog.json"
+
+[[steps]]
+open-page = "json"
+
+[[steps]]
+click = "open"
+pick-files = ["broken.json"]
+expect-text = { key = "status", contains = "Not JSON" }
+expect-rows = { on = "json", count = 0 }
+
+[[steps]]
+click = "open"
+pick-files = ["catalog.json"]
+expect-text = { key = "status", text = "" }
+expect-rows = { on = "json", count = 8 }
+
+[[steps]]
+click-row = { on = "json", row = "$.size" }
+expect-text = { key = "value", text = "12.5" }
+
+[[steps]]
+restart = true
+expect-title = "catalog.json"
+expect-rows = { on = "json", count = 8 }
+expect-text = { key = "path", text = "Select a row to see its value." }

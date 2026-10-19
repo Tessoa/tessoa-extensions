@@ -1,0 +1,17 @@
+[plugin]
+id = "com.tessoa.kanban"
+name = "Task board"
+version = "1.0.0"
+api = "tessoa:plugin@0.2.0"
+min-host = "0.29.0"
+
+[entry]
+kind = "js"
+file = "dist/plugin.js"
+
+[[pages]]
+id = "board"
+title = "Task board"
+title-zh = "任务看板"
+icon = "check"
+single = true

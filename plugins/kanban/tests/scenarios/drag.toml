@@ -1,0 +1,53 @@
+name = "Cards move between columns, before another card or to the end"
+
+[[steps]]
+open-page = "board"
+
+[[steps]]
+open-page = "board"
+
+[[steps]]
+page = 1
+type = { into = "new", text = "Write report" }
+
+[[steps]]
+submit = "new"
+
+[[steps]]
+type = { into = "new", text = "Review PR" }
+
+[[steps]]
+submit = "new"
+
+[[steps]]
+type = { into = "new", text = "Plan sprint" }
+
+[[steps]]
+submit = "new"
+
+# Onto a column: to its end.
+[[steps]]
+drop-item = { onto = "col-done", payload = "c1" }
+expect-children = [
+  { key = "col-todo", keys = ["title-todo", "c2", "c3"] },
+  { key = "col-done", keys = ["title-done", "c1"] },
+]
+expect-text = { key = "title-done", text = "Done (1)" }
+
+# Onto a card: before it. The other page shows the same.
+[[steps]]
+page = 2
+drop-item = { onto = "col-done", payload = "c3", before = "c1" }
+expect-children = [
+  { key = "col-todo", keys = ["title-todo", "c2"] },
+  { key = "col-done", keys = ["title-done", "c3", "c1"] },
+]
+
+[[steps]]
+page = 1
+drop-item = { onto = "col-todo", payload = "c1", before = "c2" }
+expect-children = [
+  { key = "col-todo", keys = ["title-todo", "c1", "c2"] },
+  { key = "col-doing", keys = ["title-doing"] },
+  { key = "col-done", keys = ["title-done", "c3"] },
+]

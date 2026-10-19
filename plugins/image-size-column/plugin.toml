@@ -1,0 +1,21 @@
+[plugin]
+id = "com.tessoa.image-size-column"
+name = "Image size column"
+version = "1.0.0"
+api = "tessoa:plugin@0.2.0"
+min-host = "0.29.0"
+
+[entry]
+kind = "wasm"
+file = "dist/plugin.wasm"
+
+[[columns]]
+id = "dimensions"
+title = "Dimensions"
+title-zh = "尺寸"
+width = 8
+align = "end"
+when = { ext = ["png", "jpg", "jpeg"] }
+
+[permissions]
+files = ["read-listed"]

@@ -1,0 +1,16 @@
+name = "Skips a file that already has the right name"
+command = "rename-by-date"
+
+[[files]]
+from = "photos/IMG_0001.jpg"
+as = "2026-10-03_1422.jpg"
+
+[[dialogs]]
+kind = "confirm-list"
+items = ["2026-10-03_1422.jpg  ->  2026-10-03_1422.jpg"]
+answer = "ok"
+
+[expect]
+files = ["2026-10-03_1422.jpg"]
+notifications = [{ title = "Rename by capture date", body = "Renamed 0 of 1 files." }]
+log-contains = ["skipped 2026-10-03_1422.jpg: the name did not change"]

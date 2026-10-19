@@ -1,0 +1,11 @@
+# Hash files: the user closes the folder picker without picking a folder.
+name = "Saves nothing when the user picks no folder"
+command = "hash-files"
+pick-folder = false
+
+[[files]]
+from = "text/three-lines.txt"
+
+[expect]
+files = ["three-lines.txt"]
+notifications = [{ title = "Hash files", body = "The hashes were not saved." }]

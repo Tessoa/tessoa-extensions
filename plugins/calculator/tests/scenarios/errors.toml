@@ -1,0 +1,37 @@
+name = "Goes below zero, shows Error for a division by zero, starts over after it"
+
+[[steps]]
+open-page = "calculator"
+
+[[steps]]
+click = "k4"
+
+[[steps]]
+click = "k2"
+
+[[steps]]
+click = "sub"
+
+[[steps]]
+click = "k5"
+
+[[steps]]
+click = "k0"
+
+[[steps]]
+click = "eq"
+expect-text = { key = "display", text = "-8" }
+
+[[steps]]
+click = "div"
+
+[[steps]]
+click = "k0"
+
+[[steps]]
+click = "eq"
+expect-text = [{ key = "display", text = "Error" }, { key = "pending", text = "" }]
+
+[[steps]]
+key = "5"
+expect-text = { key = "display", text = "5" }

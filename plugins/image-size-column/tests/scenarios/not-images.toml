@@ -1,0 +1,22 @@
+# The image-size column: files it cannot read a size from show nothing.
+name = "Shows nothing for files that are not PNG or JPEG images"
+
+# The start of a PNG, and nothing after it.
+[[files]]
+from = "images/broken.png"
+
+# A JPEG with an EXIF block and no frame header.
+[[files]]
+from = "photos/IMG_0001.jpg"
+
+# tessoa does not ask the column for files its `when` leaves out, whatever
+# they hold: this one is a PNG.
+[[files]]
+from = "images/wide.png"
+as = "wide.png.bak"
+
+[[files]]
+from = "photos/notes.txt"
+
+[[steps]]
+expect-column = { column = "dimensions", files = ["broken.png", "IMG_0001.jpg", "wide.png.bak", "notes.txt"], values = ["", "", "", ""] }

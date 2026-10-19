@@ -1,0 +1,20 @@
+name = "Reports a name that is already taken"
+command = "rename-by-date"
+
+[[files]]
+from = "photos/IMG_0001.jpg"
+
+[[files]]
+from = "photos/notes.txt"
+as = "2026-10-03_1422.jpg"
+selected = false
+
+[[dialogs]]
+kind = "confirm-list"
+items = ["IMG_0001.jpg  ->  2026-10-03_1422.jpg"]
+answer = "ok"
+
+[expect]
+files = ["2026-10-03_1422.jpg", "IMG_0001.jpg"]
+notifications = [{ title = "Rename by capture date", body = "Renamed 0 of 1 files." }]
+log-contains = ["failed IMG_0001.jpg: a file named 2026-10-03_1422.jpg already exists"]

@@ -1,0 +1,65 @@
+name = "A card is renamed in a field of several lines, on one page only"
+
+[[steps]]
+open-page = "board"
+
+[[steps]]
+open-page = "board"
+
+[[steps]]
+page = 1
+type = { into = "new", text = "Write report" }
+
+[[steps]]
+submit = "new"
+
+[[steps]]
+type = { into = "new", text = "Review PR" }
+
+[[steps]]
+submit = "new"
+
+# The card's menu opens a field of several lines with the card's text.
+[[steps]]
+menu = { on = "card-c2", item = "rename" }
+expect-tree-contains = { key = "text-c2", kind = "text-input", multiline = true, text = "Review PR" }
+
+[[steps]]
+page = 2
+expect-tree-contains = { key = "text-c2", count = 0 }
+
+# Enter starts a new line; Ctrl+Enter, the submit, saves.
+[[steps]]
+page = 1
+type = { into = "text-c2", text = "Review PR\nby Friday" }
+
+[[steps]]
+submit = "text-c2"
+expect-tree-contains = { key = "text-c2", count = 0 }
+expect-text = { key = "c2", text = "Review PR\nby Friday" }
+
+[[steps]]
+page = 2
+expect-text = { key = "c2", text = "Review PR\nby Friday" }
+
+# The Save button saves what was typed.
+[[steps]]
+menu = { on = "card-c1", item = "rename" }
+
+[[steps]]
+type = { into = "text-c1", text = "Write the report" }
+
+[[steps]]
+click = "save-c1"
+expect-text = { key = "c1", text = "Write the report" }
+
+# Cancel keeps the old text.
+[[steps]]
+menu = { on = "card-c1", item = "rename" }
+
+[[steps]]
+type = { into = "text-c1", text = "something else" }
+
+[[steps]]
+click = "cancel-c1"
+expect-text = { key = "c1", text = "Write the report" }

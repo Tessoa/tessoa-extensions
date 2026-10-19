@@ -1,0 +1,48 @@
+name = "The board is the same after tessoa restarts"
+
+[[steps]]
+open-page = "board"
+
+[[steps]]
+open-page = "board"
+
+[[steps]]
+page = 1
+type = { into = "new", text = "Write report" }
+
+[[steps]]
+submit = "new"
+
+[[steps]]
+type = { into = "new", text = "Review PR" }
+
+[[steps]]
+submit = "new"
+
+[[steps]]
+drop-item = { onto = "col-done", payload = "c1" }
+expect-storage = { key = "board", contains = "Review PR" }
+
+# Both pages open again and show the board from the storage.
+[[steps]]
+restart = true
+expect-children = [
+  { key = "col-todo", keys = ["title-todo", "c2"] },
+  { key = "col-done", keys = ["title-done", "c1"] },
+]
+expect-text = { key = "c1", text = "Write report" }
+
+[[steps]]
+page = 2
+expect-children = [
+  { key = "col-todo", keys = ["title-todo", "c2"] },
+  { key = "col-done", keys = ["title-done", "c1"] },
+]
+
+# The next card continues the numbering.
+[[steps]]
+type = { into = "new", text = "Plan sprint" }
+
+[[steps]]
+submit = "new"
+expect-children = { key = "col-todo", keys = ["title-todo", "c2", "c3"] }
