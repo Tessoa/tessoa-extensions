@@ -1,0 +1,51 @@
+# The JSON viewer: opening and closing the same entries again and again.
+# Every tree comes with the rows on screen, so each step reads them as they
+# are after the change, not as they were before it.
+name = "Opens and closes the same entries again and again"
+
+[[files]]
+from = "json/catalog.json"
+
+[[steps]]
+open-page = "json"
+
+[[steps]]
+click = "open"
+pick-files = ["catalog.json"]
+expect-rows = { on = "json", count = 8 }
+
+[[steps]]
+expand = { on = "json", row = "$.plugins" }
+expect-rows = { on = "json", count = 10, from = 5, ids = ["$.plugins", "$.plugins[0]", "$.plugins[1]", "$.released", "$.size"] }
+
+[[steps]]
+expand = { on = "json", row = "$.plugins[0]" }
+expect-rows = { on = "json", count = 13, from = 6, texts = [
+  "0: {3 keys}", "id: \"com.example.calculator\"", "pages: 1", "commands: 0", "1: {4 keys}",
+] }
+
+# Closing an entry takes its rows away, and the rows after it move up.
+[[steps]]
+expand = { on = "json", row = "$.plugins", open = false }
+expect-rows = { on = "json", count = 8, from = 5, ids = ["$.plugins", "$.released", "$.size"] }
+
+[[steps]]
+expand = { on = "json", row = "$.plugins" }
+expect-rows = { on = "json", from = 5, ids = ["$.plugins", "$.plugins[0]"] }
+
+[[steps]]
+expand = { on = "json", row = "$.plugins", open = false }
+expect-rows = { on = "json", count = 8, from = 6, ids = ["$.released", "$.size"] }
+
+# Enter on a closed object opens it; a second Enter closes it again.
+[[steps]]
+click-row = { on = "json", row = "$.author" }
+
+[[steps]]
+key = "Enter"
+expect-rows = { on = "json", count = 10, from = 4, ids = ["$.author", "$.author.name", "$.author.url", "$.plugins"] }
+
+[[steps]]
+key = "Enter"
+expect-rows = { on = "json", count = 8, from = 4, ids = ["$.author", "$.plugins"] }
+expect-selected = { on = "json", ids = ["$.author"] }
