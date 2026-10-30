@@ -1,0 +1,46 @@
+# The CSV table follows the selection of a tab group: the .csv file selected
+# there shows; a file of another kind, or no file, leaves the page as it is.
+name = "Shows the .csv file selected in the group it follows"
+
+[[files]]
+from = "csv/people.csv"
+
+[[files]]
+from = "csv/cities.csv"
+
+[[files]]
+from = "csv/people.csv"
+as = "people.txt"
+
+[[steps]]
+open-page = "csv"
+expect-text = { key = "rows", text = "Open a CSV file to see its rows here." }
+
+[[steps]]
+follow = { window = 2, group = 1 }
+expect-text = { key = "rows", text = "Select a .csv file in group 1 of window 2, or open one." }
+
+[[steps]]
+follow = { group = 1, file = "people.csv" }
+expect-title = "people.csv"
+expect-text = { key = "status", text = "25 rows" }
+
+# The user binds the page to group 2, where cities.csv is selected.
+[[steps]]
+follow = { group = 2, file = "cities.csv" }
+expect-title = "cities.csv"
+expect-rows = { on = "rows", count = 3, cells = [
+  ["London", "United Kingdom", "8866180"],
+  ["Paris", "France", "2102650"],
+  ["Tokyo", "Japan", "14047594"],
+] }
+
+[[steps]]
+follow = { group = 2, file = "people.txt" }
+expect-title = "cities.csv"
+expect-rows = { on = "rows", count = 3 }
+
+[[steps]]
+follow = { group = 2 }
+expect-title = "cities.csv"
+expect-rows = { on = "rows", count = 3 }

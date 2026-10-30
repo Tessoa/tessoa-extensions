@@ -1,0 +1,54 @@
+# The JSON viewer follows the selection of a tab group: the .json file
+# selected there shows; a file of another kind, or no file, leaves the page
+# as it is. tessoa tells the page again after a restart.
+name = "Shows the .json file selected in the group it follows"
+
+[[files]]
+from = "json/catalog.json"
+
+[[files]]
+from = "json/small.json"
+
+[[files]]
+from = "json/catalog.json"
+as = "notes.txt"
+
+[[steps]]
+open-page = "json"
+expect-text = { key = "json", text = "Open a JSON file to see it here." }
+
+[[steps]]
+follow = { group = 1 }
+expect-text = { key = "json", text = "Select a .json file in group 1, or open one." }
+
+[[steps]]
+follow = { group = 1, file = "catalog.json" }
+expect-title = "catalog.json"
+expect-rows = { on = "json", count = 8 }
+
+# The user binds the page to group 2, where small.json is selected.
+[[steps]]
+follow = { group = 2, file = "small.json" }
+expect-title = "small.json"
+expect-rows = { on = "json", count = 2, ids = ["$.id", "$.tags"] }
+
+[[steps]]
+follow = { group = 2, file = "notes.txt" }
+expect-title = "small.json"
+expect-rows = { on = "json", count = 2, ids = ["$.id", "$.tags"] }
+
+[[steps]]
+follow = { group = 2 }
+expect-title = "small.json"
+expect-rows = { on = "json", count = 2 }
+
+# The page now follows the focused group, where small.json is selected;
+# after a restart tessoa tells it again.
+[[steps]]
+follow = { focus = true, file = "small.json" }
+expect-text = { key = "status", text = "" }
+
+[[steps]]
+restart = true
+expect-title = "small.json"
+expect-rows = { on = "json", count = 2 }

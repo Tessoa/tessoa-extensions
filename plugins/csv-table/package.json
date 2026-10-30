@@ -1,6 +1,6 @@
 {
   "name": "csv-table",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A CSV file as a table that sorts",
   "private": true,
   "scripts": {

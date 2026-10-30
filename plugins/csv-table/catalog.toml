@@ -8,5 +8,5 @@ en = "CSV table"
 zh = "CSV 表格"
 
 [desc]
-en = "Opens a CSV file as a table that sorts by any column and copies the selected rows"
-zh = "以表格打开 CSV 文件，可按任意列排序并复制选中的行"
+en = "Shows a CSV file as a table, the one you open or the one selected in the tab group it follows, sorts by any column and copies the selected rows"
+zh = "以表格显示 CSV 文件（自己打开，或跟随某个标签组的选中），可按任意列排序并复制选中的行"

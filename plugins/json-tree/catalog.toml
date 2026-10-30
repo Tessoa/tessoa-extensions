@@ -8,5 +8,5 @@ en = "JSON viewer"
 zh = "JSON 查看器"
 
 [desc]
-en = "Opens a JSON file as a tree and copies the path or value of any entry"
-zh = "以树形结构打开 JSON 文件，可复制任意条目的路径或值"
+en = "Shows a JSON file as a tree, the one you open or the one selected in the tab group it follows, and copies the path or value of any entry"
+zh = "以树形结构显示 JSON 文件（自己打开，或跟随某个标签组的选中），可复制任意条目的路径或值"
