@@ -16,7 +16,7 @@
 | `plugins/image-size-column` | `com.tessoa.image-size-column` | Rust |
 
 每个 `plugin.toml` 旁边有一份 `catalog.toml`，是该插件在扩展清单里的文案：中英文名称、一句话说明，
-以及要求的最低 tessoa 版本。
+要求的最低 tessoa 版本，以及作者与源码地址。
 
 ## 装环境
 

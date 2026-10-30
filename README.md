@@ -18,7 +18,8 @@ in its extension catalog. Each one is a complete plugin project under
 
 Beside each `plugin.toml` is a `catalog.toml` with the texts of the plugin's
 catalog entry: its name and a one-sentence description in English and
-Chinese, and the oldest tessoa it needs.
+Chinese, the oldest tessoa it needs, its author and the address of its
+source.
 
 ## Setting up
 
