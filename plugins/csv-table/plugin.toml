@@ -1,9 +1,9 @@
 [plugin]
 id = "com.tessoa.csv-table"
 name = "CSV table"
-version = "1.1.0"
+version = "1.1.1"
 api = "tessoa:plugin@0.2.0"
-min-host = "0.29.0"
+min-host = "0.29.4"
 
 [entry]
 kind = "js"
