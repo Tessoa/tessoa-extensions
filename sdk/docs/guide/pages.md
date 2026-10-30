@@ -544,8 +544,8 @@ follow = true
 ```
 
 tessoa then draws a chip above the page that says what it follows, the same
-chip its own preview tabs have: "Follows group 2", "Follows the focus",
-"Pinned" or "Follows a tab". The user clicks it to choose another tab
+chip its own preview tabs have: "Following group 2", "Following focus",
+"Pinned" or "Following a tab". The user clicks it to choose another tab
 group, the focus, or to pin what is shown; hovering it lights up the group.
 The chip is tessoa's: the page does not draw one and cannot change the
 binding, it only hears of it.
