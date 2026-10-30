@@ -1,5 +1,5 @@
 # Texts for the extension catalog entry of this plugin.
-min_host = "0.29.4"
+min_host = "0.30.0"
 author = "tessoa"
 homepage = "https://github.com/Tessoa/tessoa-extensions/tree/main/plugins/csv-table"
 

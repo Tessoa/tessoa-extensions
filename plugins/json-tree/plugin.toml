@@ -1,9 +1,9 @@
 [plugin]
 id = "com.tessoa.json-tree"
 name = "JSON viewer"
-version = "1.1.1"
+version = "1.1.2"
 api = "tessoa:plugin@0.2.0"
-min-host = "0.29.4"
+min-host = "0.30.0"
 
 [entry]
 kind = "js"
