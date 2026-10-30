@@ -574,6 +574,8 @@ interface columns {
 /// What the host does for a plugin's pages.
 /// Available without declaring a permission.
 interface pages-host {
+    use files.{file-ref};
+
     /// Identifies one open page. The host issues it when the page opens; it
     /// is unique among all open pages of all plugins.
     type page-id = u64;
@@ -599,6 +601,46 @@ interface pages-host {
     /// items, the dialog shows one line per item, like `ui.confirm-list`.
     /// Returns 0 when the page is not open.
     ask: func(page: page-id, title: string, body: string, items: list<string>, ok-label: string, cancel-label: string) -> u64;
+
+    /// What a page that follows the selection is bound to. A page declared
+    /// with `follow = true` shows what the user selects in one tab group;
+    /// tessoa draws a chip above the page that names the binding, and the
+    /// user changes it there. The page only reads it.
+    ///
+    /// Group and window numbers are the ones on the badges of the tab
+    /// groups. They change when the user splits or closes groups, so they
+    /// are for showing to the user, not for keeping.
+    variant follow-source {
+        /// A tab group of the page's window, by its number.
+        group(u32),
+        /// A tab group of another window: (window number, group number).
+        window-group(tuple<u32, u32>),
+        /// Whichever group has the focus.
+        focus,
+        /// One tab, wherever the user moves it.
+        tab,
+        /// The file that was shown when the user pinned it; the page no
+        /// longer follows anything.
+        pinned,
+        /// The group or the tab it followed has closed.
+        lost,
+    }
+
+    /// The binding of a page that follows the selection, and its file.
+    record follow-state {
+        source: follow-source,
+        /// The one file selected in the followed group, as a reference
+        /// issued to this plugin; none while there is no single file: no
+        /// selection, several files, a folder. The reference may stop
+        /// working once the file leaves the selection, so a page reads the
+        /// file when it arrives.
+        file: option<file-ref>,
+    }
+
+    /// The binding and the file of a page that follows the selection; none
+    /// when the page does not follow, or tessoa has not said yet. When it
+    /// changes, tessoa renders the page again.
+    followed: func(page: page-id) -> option<follow-state>;
 }
 
 /// What a plugin with pages exports. A page is a whole tab, or a section of

@@ -67,7 +67,25 @@ Returns 0 when the page is not open.
 
 Permission: none.
 
+### followed
+
+```
+wit  followed: func(page: page-id) -> option<follow-state>
+rust tessoa_plugin_sdk::pages_host::followed(page: PageId) -> Option<FollowState>
+ts   tessoa.pagesHost.followed(page: PageId): FollowState | undefined
+```
+
+The binding and the file of a page that follows the selection; none
+when the page does not follow, or tessoa has not said yet. When it
+changes, tessoa renders the page again.
+
+Permission: none.
+
 ## Types
+
+### file-ref
+
+Defined in [files](files.md#file-ref).
 
 ### page-id
 
@@ -75,3 +93,36 @@ Permission: none.
 
 Identifies one open page. The host issues it when the page opens; it
 is unique among all open pages of all plugins.
+
+### follow-source
+
+Variant; Rust `FollowSource`, TypeScript `FollowSource`.
+
+What a page that follows the selection is bound to. A page declared
+with `follow = true` shows what the user selects in one tab group;
+tessoa draws a chip above the page that names the binding, and the
+user changes it there. The page only reads it.
+
+Group and window numbers are the ones on the badges of the tab
+groups. They change when the user splits or closes groups, so they
+are for showing to the user, not for keeping.
+
+| Case | Payload | Meaning |
+|---|---|---|
+| `group` | `u32` | A tab group of the page's window, by its number. |
+| `window-group` | `tuple<u32, u32>` | A tab group of another window: (window number, group number). |
+| `focus` | none | Whichever group has the focus. |
+| `tab` | none | One tab, wherever the user moves it. |
+| `pinned` | none | The file that was shown when the user pinned it; the page no longer follows anything. |
+| `lost` | none | The group or the tab it followed has closed. |
+
+### follow-state
+
+Record; Rust `FollowState`, TypeScript `FollowState`.
+
+The binding of a page that follows the selection, and its file.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `source` | `follow-source` |  |
+| `file` | `option<file-ref>` | The one file selected in the followed group, as a reference issued to this plugin; none while there is no single file: no selection, several files, a folder. The reference may stop working once the file leaves the selection, so a page reads the file when it arrives. |

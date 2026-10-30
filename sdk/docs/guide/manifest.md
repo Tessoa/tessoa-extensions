@@ -67,6 +67,7 @@ title = "Calculator"
 icon = "icon.svg"
 single = false
 where = ["tab"]
+follow = false
 ```
 
 | Key | Meaning |
@@ -76,6 +77,7 @@ where = ["tab"]
 | `icon` | Optional. A `.png` or `.svg` file inside the plugin directory (at most 256 by 256 pixels and 64 KiB), written with `/`, or a name from tessoa's icon set (listed in [pages.md](pages.md#the-tree)). tessoa draws a puzzle piece for a file it cannot use or a name it does not know. |
 | `single` | Optional, `false` by default. `true` means one page of this kind per window: opening it again brings the one that is open to the front. Another window may open its own, showing the same data. |
 | `where` | Optional, `["tab"]` by default. Where the page opens from the extension page menus of the tab bar and of the file list, from the settings and from `pages-host.open`: `"tab"`, a new tab in the focused pane, or `"sidebar"`, a new section at the bottom of the sidebar. The first place in the list decides; the user can drag an open page between the tabs and the sidebar either way. Any other place is rejected. |
+| `follow` | Optional, `false` by default. `true` means the page shows what the user selects in one tab group: tessoa draws a chip above the page that names the group it follows ("Follows group 2", "Follows the focus", "Pinned", "Follows a tab"), the user changes it there, and the page hears of every change and of every file selected there. See [pages.md](pages.md#following-the-selection). A page without it stays as it was; a tessoa or a runner that does not know the key ignores it. |
 
 A plugin with pages is built for the world `tessoa-plugin-pages`, which
 exports the page functions. Declaring pages in a component built without them

@@ -674,6 +674,17 @@ declare namespace tessoa.pages {
      * section was shown or hidden.
      */
     onActivated?(state: S, visible: boolean): void;
+    /**
+     * For a page declared with `follow = true` in plugin.toml: the binding
+     * the user chose on the chip tessoa draws above the page, or the file
+     * selected in the followed group, changed. Called before the render
+     * that shows the change, and once before the first render. The file is
+     * a reference to read now, with `tessoa.refs.readAll` or
+     * `tessoa.refs.info`: it may stop working once the user selects another
+     * one, so keep what was read, not the reference. Do the reading before
+     * any `await`: what changes after it shows at the next render.
+     */
+    follow?(state: S, followed: tessoa.pagesHost.FollowState): void;
     /** The page closed. */
     close?(state: S): void;
   }

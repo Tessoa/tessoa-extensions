@@ -1084,7 +1084,7 @@ pub mod task {
 /// [`crate::pages::confirm`].
 #[cfg(feature = "pages")]
 pub mod pages_host {
-    pub use crate::pages::PageId;
+    pub use crate::pages::{FollowSource, FollowState, PageId};
 
     /// Ask for a page to be rendered again once the current call returns.
     pub fn invalidate(page: PageId) {
@@ -1110,6 +1110,16 @@ pub mod pages_host {
     /// this.
     pub fn ask(page: PageId, title: &str, body: &str, items: &[String], ok_label: &str, cancel_label: &str) -> u64 {
         crate::raw::pages_host::ask(page, title, body, items, ok_label, cancel_label)
+    }
+
+    /// What a page declared with `follow = true` is bound to, and the one
+    /// file selected there; `None` when the page does not follow, or tessoa
+    /// has not said yet. tessoa draws the chip that shows the binding and
+    /// the user changes it there; [`crate::pages::Page::follow`] hears of
+    /// every change. Needs the SDK's `follow` feature.
+    #[cfg(feature = "follow")]
+    pub fn followed(page: PageId) -> Option<FollowState> {
+        crate::raw::pages_host::followed(page)
     }
 }
 

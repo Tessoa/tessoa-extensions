@@ -530,6 +530,84 @@ single = true
 where = ["sidebar"]
 ```
 
+## Following the selection
+
+A viewer for one kind of file is most useful beside the file list: the user
+selects a file there and the page shows it. Declare the page with
+`follow = true`:
+
+```toml
+[[pages]]
+id = "json"
+title = "JSON viewer"
+follow = true
+```
+
+tessoa then draws a chip above the page that says what it follows, the same
+chip its own preview tabs have: "Follows group 2", "Follows the focus",
+"Pinned" or "Follows a tab". The user clicks it to choose another tab
+group, the focus, or to pin what is shown; hovering it lights up the group.
+The chip is tessoa's: the page does not draw one and cannot change the
+binding, it only hears of it.
+
+The page hears of every new binding and of every file selected in the
+followed group, before the render that shows the change, and once before
+its first render:
+
+```tsx
+tessoa.pages.define<Viewer>("json", {
+  open: () => ({ file: undefined, following: undefined }),
+  follow: (v, f) => {
+    v.following = f.source;            // { group: 2 }, { windowGroup: [2, 1] }, { focus: true }, ...
+    if (f.file === undefined) return;   // no selection, several files, a folder
+    const [info] = tessoa.refs.info([f.file]);
+    if (info && /\.json$/i.test(info.name)) load(v, f.file);
+  },
+  render: (v) => ...,
+});
+```
+
+```rust
+impl Page for Viewer {
+    fn follow(&mut self, followed: &FollowState) {
+        self.following = Some(followed.source);
+        if let Some(file) = followed.file {
+            // refs::info(&[file]), refs::read_all(file)
+        }
+    }
+}
+```
+
+In Rust, `Page::follow` needs the SDK's `follow` feature
+(`features = ["pages", "follow"]`), which also brings
+`pages_host::followed(page)`; in TypeScript, `tessoa.pagesHost.followed(page)`
+reads the same at any time.
+
+- The source is `group(n)` for a tab group of the page's window,
+  `window-group(w, n)` for one of another window, `focus`, `tab`, `pinned`
+  (it follows nothing now) or `lost` (the group or the tab it followed has
+  closed; the user picks another on the chip). The numbers are the ones on
+  tessoa's group badges and change when the user splits or closes groups:
+  show them, do not keep them.
+- The file is a reference issued to the plugin, to read there and then with
+  `tessoa.refs.readAll` / `refs::read_all` and `refs.info` (reading needs
+  `files.read-selected`). It may stop working once the user selects
+  another one: keep what was read, not the reference, and do not save it
+  in the page's state. After a restart tessoa tells the page again what it
+  follows.
+- Show only the files the page understands and leave the page as it is for
+  any other, so that selecting a folder or a picture on the way does not
+  empty it. Say in the empty state where to select a file: "Select a .json
+  file in group 2".
+- tessoa sends the newest change only: moving through a folder with the
+  arrow keys shows the last file, not every one on the way.
+- A page in the sidebar follows nothing (tessoa draws no chip there) and
+  keeps what it last heard. A page without `follow = true` hears nothing and
+  stays as it was.
+
+In a scenario, `follow = { group = 2, file = "b.json" }` plays tessoa (see
+[testing.md](testing.md)).
+
 ## Colours
 
 A page shows tessoa's colours unless the plugin gives its pages a theme in
@@ -886,7 +964,7 @@ and a list, a table or a tree has the rows on its screen below it; see
 ## The manifest
 
 Each kind of page is a `[[pages]]` entry in `plugin.toml` with an `id`, a
-`title`, optionally an `icon`, `single` and `where`; the plugin's `[theme]`
+`title`, optionally an `icon`, `single`, `where` and `follow`; the plugin's `[theme]`
 colours all its pages. See [manifest.md](manifest.md). The `id` is the kind
 that `tessoa.pages.define("<id>", ...)` or `export_pages!(T => "<id>")`
 names. A plugin may have pages and no commands.

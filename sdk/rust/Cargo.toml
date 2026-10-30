@@ -9,6 +9,7 @@ license = "LicenseRef-Proprietary"
 
 [features]
 pages = []
+follow = ["pages"]
 
 [dependencies]
 wit-bindgen = "0.62"

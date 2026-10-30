@@ -92,6 +92,7 @@ pub use crate::bindings::exports::tessoa::plugin::pages::{
 };
 pub use crate::raw::files::{CreateOutcome, FileRef, Folder};
 pub use crate::raw::net::Response;
+pub use crate::raw::pages_host::{FollowSource, FollowState};
 pub use crate::raw::refs::TransferOutcome;
 pub use crate::raw::tasks::TaskOutcome;
 pub use crate::tree_model::{TreeModel, TreeRow};
@@ -183,6 +184,18 @@ pub trait Page: 'static {
     /// describe answers with the ids alone.
     fn row_ids(&self, list: &str, start: usize, count: usize) -> Vec<String> {
         self.rows(list, start, count).into_iter().map(|r| r.id).collect()
+    }
+
+    /// For a page declared with `follow = true` in `plugin.toml`: the
+    /// binding the user chose on the chip tessoa draws above the page, or the
+    /// file selected in the followed group, changed. Called before the render
+    /// that shows the change, and once before the first render. The file is a
+    /// reference to read now, with [`crate::refs`]: it may stop working once
+    /// the user selects another one, so keep what was read, not the
+    /// reference. Needs the SDK's `follow` feature, which also brings
+    /// `pages_host::followed`; without it this is never called.
+    fn follow(&mut self, followed: &FollowState) {
+        let _ = followed;
     }
 }
 
@@ -1674,6 +1687,7 @@ pub mod __private {
         fn save(&self) -> Option<Vec<u8>>;
         fn rows(&self, list: &str, start: usize, count: usize) -> Vec<Row>;
         fn row_ids(&self, list: &str, start: usize, count: usize) -> Vec<String>;
+        fn follow(&mut self, followed: &FollowState);
     }
 
     impl<P: Page> Erased for P {
@@ -1698,6 +1712,9 @@ pub mod __private {
         fn row_ids(&self, list: &str, start: usize, count: usize) -> Vec<String> {
             Page::row_ids(self, list, start, count)
         }
+        fn follow(&mut self, followed: &FollowState) {
+            Page::follow(self, followed)
+        }
     }
 
     /// Opens a page of one type.
@@ -1712,6 +1729,9 @@ pub mod __private {
         fields: Fields,
         /// The lists of the last render, by key, with their numbers of rows.
         lists: HashMap<String, usize>,
+        /// What the page last heard from [`Page::follow`].
+        #[cfg(feature = "follow")]
+        followed: Option<FollowState>,
     }
 
     #[derive(Default)]
@@ -1767,6 +1787,8 @@ pub mod __private {
                 page: page_value,
                 fields: Fields::default(),
                 lists: HashMap::new(),
+                #[cfg(feature = "follow")]
+                followed: None,
             },
         );
         Ok(())
@@ -1856,6 +1878,15 @@ pub mod __private {
 
     pub fn render(page: PageId) -> Result<wire::Tree, String> {
         let mut open = take(page)?;
+        // A page that follows the selection hears of a change before it
+        // describes itself: tessoa renders it for that change.
+        #[cfg(feature = "follow")]
+        if let Some(f) = crate::raw::pages_host::followed(page)
+            && open.followed.as_ref() != Some(&f)
+        {
+            open.page.follow(&f);
+            open.followed = Some(f);
+        }
         let root = open.page.render();
         let title = open.page.title();
         let keys = open.page.keys();

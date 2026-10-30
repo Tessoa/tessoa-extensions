@@ -724,11 +724,38 @@ declare namespace tessoa {
    * Available without declaring a permission.
    */
   namespace pagesHost {
+    /** See `tessoa.files.FileRef`. */
+    type FileRef = files.FileRef;
+
     /**
      * Identifies one open page. The host issues it when the page opens; it
      * is unique among all open pages of all plugins.
      */
     type PageId = number;
+
+    /**
+     * One of:
+     * `group`: a tab group of the page's window, by its number.
+     * `window-group`: a tab group of another window: (window number, group number).
+     * `focus`: whichever group has the focus.
+     * `tab`: one tab, wherever the user moves it.
+     * `pinned`: the file that was shown when the user pinned it; the page no longer follows anything.
+     * `lost`: the group or the tab it followed has closed.
+     */
+    type FollowSource = { group: number } | { windowGroup: [number, number] } | { focus: true } | { tab: true } | { pinned: true } | { lost: true };
+
+    /** The binding of a page that follows the selection, and its file. */
+    interface FollowState {
+      source: FollowSource;
+      /**
+       * The one file selected in the followed group, as a reference
+       * issued to this plugin; none while there is no single file: no
+       * selection, several files, a folder. The reference may stop
+       * working once the file leaves the selection, so a page reads the
+       * file when it arrives.
+       */
+      file: FileRef | undefined;
+    }
 
     /**
      * Ask for the page to be rendered again. The host calls `render` once
@@ -762,6 +789,13 @@ declare namespace tessoa {
      * The labels default to "OK" and "Cancel".
      */
     function ask(page: PageId, title: string, body: string, items: string[], okLabel?: string, cancelLabel?: string): Promise<boolean>;
+
+    /**
+     * The binding and the file of a page that follows the selection; none
+     * when the page does not follow, or tessoa has not said yet. When it
+     * changes, tessoa renders the page again.
+     */
+    function followed(page: PageId): FollowState | undefined;
   }
 
   /**
