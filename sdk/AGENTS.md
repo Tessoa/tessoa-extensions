@@ -43,6 +43,17 @@ example.
    It keeps the skeleton you chose and deletes the other one. Do not set the
    project up by hand instead, by writing `plugin.toml` or copying a skeleton
    or an example to the root.
+
+   Without the template: when the folder has neither `skeleton/` nor
+   `plugin.toml`, there is no project yet, and no setup script either. If
+   `tessoa-plugin` is installed, run
+   `tessoa-plugin new <folder> --lang ts|rust --id <reverse.domain.id> --name "<Name>"`
+   instead of steps 2 and 3. It writes the project `init` would leave, `sdk/`
+   included, into a new or empty folder; work in that folder from then on.
+   The project also gets the skill for coding tools that the template
+   carries, as `tessoa-plugin skill install --project` would write it.
+   The toolchain for the language is still needed: `doctor` says what is
+   missing.
 4. Run `tessoa-plugin doctor`. Fix whatever it marks FAIL before going on; it
    fails while `skeleton/` is left.
 5. Declare the commands, pages, columns or settings and their permissions in
@@ -84,7 +95,15 @@ be found or is too old, say so; do not work around it.
 | `tessoa-plugin run --command <id> --file <path> --answer ok` | Try one command on real files. The files are really renamed; use copies. |
 | `tessoa-plugin package` | Write the zip. |
 | `tessoa-plugin install` | Hand the project to tessoa. |
+| `tessoa-plugin new <folder> --lang ts\|rust --id <id>` | Create a project without the template. |
+| `tessoa-plugin dev [--no-install] [--test]` | Build and install, then build again after every change, until Ctrl+C. It never finishes by itself, so do not run it where a command has to end. |
 | `tessoa-plugin upgrade` | Replace `sdk/` with the newest kit. Run `--check` to only look. |
+| `tessoa-plugin mcp` | Offer these commands and the reference as an MCP server; started by the coding tool, not by hand. |
+
+When a program runs these commands, add `--json`: stdout is then one JSON document
+with `ok`, `exit` and `problems`, and each problem's `hint` says how to fix it
+(`sdk/docs/guide/cli.md#machine-readable-output`). Exit status 2 means the setup is
+wrong, not the plugin: fix that first.
 
 There is no option that grants a permission, and none may be invented. Consent is
 given only by the user, inside tessoa.

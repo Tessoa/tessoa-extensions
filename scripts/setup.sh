@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Installs what a tessoa plugin project needs on this computer, and only what
 # is missing: the tessoa-plugin command-line tool, and Node.js (--lang ts) or
-# Rust with the wasm32-wasip2 target (--lang rust). For macOS on Apple silicon
-# and Linux on x86-64.
+# Rust with the wasm32-wasip2 target (--lang rust). For macOS (Apple silicon
+# and Intel) and Linux on x86-64.
 #
 #   scripts/setup.sh --lang ts [--mirror auto|cn|official] [--no-modify-path]
 #
@@ -56,8 +56,9 @@ node_major=22
 
 case "$(uname -s)/$(uname -m)" in
 Darwin/arm64) target="aarch64-apple-darwin"; node_platform="darwin-arm64" ;;
+Darwin/x86_64) target="x86_64-apple-darwin"; node_platform="darwin-x64" ;;
 Linux/x86_64) target="x86_64-unknown-linux-gnu"; node_platform="linux-x64" ;;
-*) die "tessoa-plugin is built for macOS on Apple silicon and Linux on x86-64; this is $(uname -s) $(uname -m)" ;;
+*) die "tessoa-plugin is built for macOS (Apple silicon and Intel) and Linux on x86-64; this is $(uname -s) $(uname -m)" ;;
 esac
 
 # ---------------------------------------------------------------- cli.lock
