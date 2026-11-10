@@ -1,0 +1,24 @@
+# A file picked with "Open CSV…" stays as a dropped one does.
+name = "A picked file stays until the chip changes"
+
+[[files]]
+from = "csv/people.csv"
+
+[[files]]
+from = "csv/cities.csv"
+
+[[steps]]
+open-page = "csv"
+
+[[steps]]
+follow = { focus = true, file = "people.csv" }
+expect-title = "people.csv"
+
+[[steps]]
+click = "open"
+pick-files = ["cities.csv"]
+expect-title = "cities.csv"
+
+[[steps]]
+follow = { focus = true, file = "people.csv" }
+expect-title = "cities.csv"

@@ -1,0 +1,24 @@
+# A file picked with "Open JSON…" stays as a dropped one does.
+name = "A picked file stays until the chip changes"
+
+[[files]]
+from = "json/catalog.json"
+
+[[files]]
+from = "json/small.json"
+
+[[steps]]
+open-page = "json"
+
+[[steps]]
+follow = { focus = true, file = "catalog.json" }
+expect-title = "catalog.json"
+
+[[steps]]
+click = "open"
+pick-files = ["small.json"]
+expect-title = "small.json"
+
+[[steps]]
+follow = { focus = true, file = "catalog.json" }
+expect-title = "small.json"

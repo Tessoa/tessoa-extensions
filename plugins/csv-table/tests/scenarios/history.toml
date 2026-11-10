@@ -1,0 +1,45 @@
+# The column at the right lists the files the page showed, newest first, and
+# shows one again on a click; that one then stays as a dropped file does.
+# After a restart only the files the user picked or dropped are listed.
+name = "The history lists the files shown and opens them again"
+
+[[files]]
+from = "csv/people.csv"
+
+[[files]]
+from = "csv/cities.csv"
+
+[[files]]
+from = "csv/cities.csv"
+as = "towns.csv"
+
+[[steps]]
+open-page = "csv"
+expect-rows = { on = "history", count = 0 }
+
+[[steps]]
+follow = { group = 1, file = "people.csv" }
+
+[[steps]]
+follow = { group = 1, file = "cities.csv" }
+expect-rows = { on = "history", texts = ["cities.csv", "people.csv"] }
+expect-selected = { on = "history", ids = ["h2"] }
+
+[[steps]]
+click-row = { on = "history", row = "h1" }
+expect-title = "people.csv"
+expect-text = { key = "status", text = "25 rows" }
+
+[[steps]]
+follow = { group = 1, file = "cities.csv" }
+expect-title = "people.csv"
+
+[[steps]]
+drop-files = { onto = "drop", files = ["towns.csv"] }
+expect-title = "towns.csv"
+expect-rows = { on = "history", texts = ["towns.csv", "people.csv", "cities.csv"] }
+
+[[steps]]
+restart = true
+expect-title = "towns.csv"
+expect-rows = { on = "history", texts = ["towns.csv"] }

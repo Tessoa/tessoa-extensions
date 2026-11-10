@@ -1,39 +1,55 @@
-# A file dropped on the page opens like a picked one and is kept across a
-# restart; a file that is not JSON leaves the page as it is and says so.
-name = "Opens a dropped file"
+# A file dropped on the page opens and stays: the .json files selected in
+# the followed group no longer replace it, until the user chooses another
+# binding on the chip. It stays after a restart. A file that is not JSON
+# changes nothing.
+name = "A dropped file opens and stays until the chip changes"
 
 [[files]]
 from = "json/catalog.json"
-selected = false
 
 [[files]]
 from = "json/small.json"
-selected = false
 
 [[files]]
 from = "json/broken.json"
-selected = false
 
 [[steps]]
 open-page = "json"
 expect-tree-contains = { kind = "drop-zone", key = "drop", count = 1 }
 
 [[steps]]
+follow = { group = 1, file = "catalog.json" }
+expect-title = "catalog.json"
+
+[[steps]]
 drop-files = { onto = "drop", files = ["small.json"] }
 expect-title = "small.json"
 expect-rows = { on = "json", count = 2, ids = ["$.id", "$.tags"] }
+expect-text = { key = "status", contains = "Staying on this file" }
 
+# Another .json file selected in the same group: the page stays.
 [[steps]]
-drop-files = { onto = "drop", files = ["catalog.json", "small.json"] }
-expect-title = "catalog.json"
-expect-rows = { on = "json", count = 8 }
+follow = { group = 1, file = "catalog.json" }
+expect-title = "small.json"
 
+# Of several files, the first opens; a file that is not JSON changes nothing.
 [[steps]]
-drop-files = { onto = "drop", files = ["broken.json"] }
-expect-title = "catalog.json"
+drop-files = { onto = "drop", files = ["broken.json", "catalog.json"] }
+expect-title = "small.json"
 expect-text = { key = "status", contains = "Not JSON" }
 
 [[steps]]
 restart = true
+expect-title = "small.json"
+expect-rows = { on = "json", count = 2 }
+
+[[steps]]
+follow = { group = 1, file = "catalog.json" }
+expect-title = "small.json"
+
+# The user chooses group 2 on the chip: the page follows again.
+[[steps]]
+follow = { group = 2, file = "catalog.json" }
 expect-title = "catalog.json"
 expect-rows = { on = "json", count = 8 }
+expect-text = { key = "status", text = "" }

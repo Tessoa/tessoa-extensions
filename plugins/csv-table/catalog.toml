@@ -8,5 +8,5 @@ en = "CSV table"
 zh = "CSV 表格"
 
 [desc]
-en = "Shows a CSV file as a table, the one you open or drop on it, or the one selected in the tab group it follows (a switch turns following off), sorts by any column and copies the selected rows"
-zh = "以表格显示 CSV 文件（自己打开、拖入，或跟随某个标签组的选中，跟随可随时关闭），可按任意列排序并复制选中的行"
+en = "Shows a CSV file as a table, the one selected in the tab group it follows, or one you open or drop on it, which stays until you change what it follows; lists the files viewed; sorts by any column and copies the selected rows"
+zh = "以表格显示 CSV 文件（跟随某个标签组的选中；自己打开或拖入的文件会停住，直到改选跟随；右侧列出看过的文件），可按任意列排序并复制选中的行"

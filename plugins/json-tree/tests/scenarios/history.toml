@@ -1,0 +1,52 @@
+# The column at the right lists the files the page showed, newest first, and
+# shows one again on a click; that one then stays as a dropped file does.
+# After a restart only the files the user picked or dropped are listed: the
+# references of followed files do not last.
+name = "The history lists the files shown and opens them again"
+
+[[files]]
+from = "json/catalog.json"
+
+[[files]]
+from = "json/small.json"
+
+[[files]]
+from = "json/catalog.json"
+as = "copy.json"
+
+[[steps]]
+open-page = "json"
+expect-rows = { on = "history", count = 0 }
+
+[[steps]]
+follow = { group = 1, file = "catalog.json" }
+
+[[steps]]
+follow = { group = 1, file = "small.json" }
+expect-rows = { on = "history", texts = ["small.json", "catalog.json"] }
+expect-selected = { on = "history", ids = ["h2"] }
+
+# Seen again: it moves to the top, not listed twice.
+[[steps]]
+follow = { group = 1, file = "catalog.json" }
+expect-rows = { on = "history", texts = ["catalog.json", "small.json"] }
+
+[[steps]]
+click-row = { on = "history", row = "h2" }
+expect-title = "small.json"
+expect-rows = { on = "json", count = 2 }
+expect-text = { key = "status", contains = "Staying on this file" }
+
+[[steps]]
+follow = { group = 1, file = "catalog.json" }
+expect-title = "small.json"
+
+[[steps]]
+drop-files = { onto = "drop", files = ["copy.json"] }
+expect-title = "copy.json"
+expect-rows = { on = "history", texts = ["copy.json", "small.json", "catalog.json"] }
+
+[[steps]]
+restart = true
+expect-title = "copy.json"
+expect-rows = { on = "history", texts = ["copy.json"] }

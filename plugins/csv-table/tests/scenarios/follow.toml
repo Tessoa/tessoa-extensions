@@ -14,11 +14,11 @@ as = "people.txt"
 
 [[steps]]
 open-page = "csv"
-expect-text = { key = "rows", text = "Open a CSV file to see its rows here." }
+expect-text = { key = "rows", text = "Open or drop a CSV file to see its rows here." }
 
 [[steps]]
 follow = { window = 2, group = 1 }
-expect-text = { key = "rows", text = "Select a .csv file in group 1 of window 2, or open one." }
+expect-text = { key = "rows", text = "Select a .csv file in group 1 of window 2, or open or drop one." }
 
 [[steps]]
 follow = { group = 1, file = "people.csv" }

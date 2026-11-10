@@ -15,11 +15,11 @@ as = "notes.txt"
 
 [[steps]]
 open-page = "json"
-expect-text = { key = "json", text = "Open a JSON file to see it here." }
+expect-text = { key = "json", text = "Open or drop a JSON file to see it here." }
 
 [[steps]]
 follow = { group = 1 }
-expect-text = { key = "json", text = "Select a .json file in group 1, or open one." }
+expect-text = { key = "json", text = "Select a .json file in group 1, or open or drop one." }
 
 [[steps]]
 follow = { group = 1, file = "catalog.json" }

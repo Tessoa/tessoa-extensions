@@ -1,31 +1,41 @@
-# A file dropped on the page opens like a picked one, whatever its name, and
-# is kept across a restart with its sort order.
-name = "Opens a dropped file"
+# A file dropped on the page opens, whatever its name, and stays: the .csv
+# files selected in the followed group no longer replace it, until the user
+# chooses another binding on the chip. It stays after a restart.
+name = "A dropped file opens and stays until the chip changes"
 
 [[files]]
 from = "csv/people.csv"
-selected = false
 
 [[files]]
 from = "csv/cities.csv"
 as = "cities.txt"
-selected = false
 
 [[steps]]
 open-page = "csv"
 expect-tree-contains = { kind = "drop-zone", key = "drop", count = 1 }
 
 [[steps]]
-drop-files = { onto = "drop", files = ["people.csv"] }
+follow = { group = 1, file = "people.csv" }
 expect-title = "people.csv"
-expect-text = { key = "status", text = "25 rows" }
 
+# Of several files, the first opens.
 [[steps]]
 drop-files = { onto = "drop", files = ["cities.txt", "people.csv"] }
 expect-title = "cities.txt"
 expect-rows = { on = "rows", count = 3 }
+expect-text = { key = "hold", contains = "Staying on this file" }
+
+[[steps]]
+follow = { group = 1, file = "people.csv" }
+expect-title = "cities.txt"
 
 [[steps]]
 restart = true
 expect-title = "cities.txt"
 expect-rows = { on = "rows", count = 3 }
+
+# The user chooses group 2 on the chip: the page follows again.
+[[steps]]
+follow = { group = 2, file = "people.csv" }
+expect-title = "people.csv"
+expect-text = [{ key = "status", text = "25 rows" }, { key = "hold", text = "" }]
