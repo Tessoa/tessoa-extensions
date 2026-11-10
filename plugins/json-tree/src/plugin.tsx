@@ -17,7 +17,15 @@
 // draws a chip above it that says which tab group it follows, and the user
 // changes it there. When a .json file is selected in that group, the page
 // shows it; anything else leaves the page as it is, so that selecting a
-// folder or a picture on the way does not empty it.
+// folder or a picture on the way does not empty it. The "Follow selection"
+// switch next to "Open JSON…" stops that and starts it again: off, the page
+// keeps the file it shows whatever is selected; on again, it shows the
+// .json file selected at that moment. The page keeps the switch across
+// restarts.
+//
+// A file dropped on the tree, from tessoa or from another program, opens
+// like a picked one, whatever its name: the user chose it, and a file that
+// is not JSON says so in the status.
 //
 // Each row's id is the entry's path, such as `$.plugins[0].id`, which is
 // what a scenario names. A row id is at most 128 bytes, so a path longer
@@ -31,16 +39,26 @@ interface Item {
 }
 
 interface Viewer {
+  /** The page's id, to ask tessoa what it follows when the switch turns on. */
+  page: number;
   file: tessoa.files.FileRef | undefined;
   /** The file was picked with "Open JSON…", not followed: it is the one to keep. */
   picked: boolean;
   /** What the page follows, as tessoa last said; undefined until it says. */
   following: tessoa.pagesHost.FollowSource | undefined;
+  /** The "Follow selection" switch: off, a selected file does not replace the one shown. */
+  followOn: boolean;
   name: string;
   tree: tessoa.pages.TreeModel<Item>;
   /** The selected row's id. */
   selected: string | undefined;
   status: string;
+}
+
+/** What `save` keeps. */
+interface Saved {
+  file?: number;
+  follow?: boolean;
 }
 
 /** Longest row id, in bytes. */
@@ -130,19 +148,50 @@ async function open(v: Viewer): Promise<void> {
   load(v, file, true);
 }
 
-/** Show the file selected in the followed group, when it is JSON. */
+/** Show the file selected in the followed group, when it is JSON and the switch is on. */
 function follow(v: Viewer, f: tessoa.pagesHost.FollowState): void {
   v.following = f.source;
-  if (f.file === undefined || f.file === v.file) return;
+  if (!v.followOn || f.file === undefined || f.file === v.file) return;
   const [info] = tessoa.refs.info([f.file]);
   if (info === undefined || info.isDir || !/\.json$/i.test(info.name)) return;
   load(v, f.file, false);
+}
+
+/**
+ * Turn following on or off. Turned on, the page shows the .json file
+ * selected now; the reference is read at once, before it may stop working.
+ */
+function setFollow(v: Viewer, on: boolean): void {
+  v.followOn = on;
+  if (!on) return;
+  const f = tessoa.pagesHost.followed(v.page);
+  if (f !== undefined) follow(v, f);
+}
+
+/** Open the first file dropped on the page; the others are not kept. */
+function drop(v: Viewer, files: tessoa.files.FileRef[]): void {
+  const infos = tessoa.refs.info(files);
+  const file = infos.find((i) => !i.isDir)?.ref;
+  const unused = files.filter((f) => f !== file && f !== v.file);
+  if (unused.length > 0) tessoa.refs.release(unused);
+  if (file === undefined) {
+    v.status = zh() ? "拖入的不是文件。" : "That is not a file.";
+    return;
+  }
+  load(v, file, true);
+  // Not JSON: nothing changed, and the reference is of no use.
+  if (v.file !== file) tessoa.refs.release([file]);
+}
+
+function zh(): boolean {
+  return tessoa.ui.language() === "zh";
 }
 
 /** What the empty tree says: where to select a file, in tessoa's language. */
 function emptyText(v: Viewer): string {
   const zh = tessoa.ui.language() === "zh";
   const s = v.following;
+  if (!v.followOn) return zh ? "打开或拖入一个 JSON 文件，在这里查看。" : "Open or drop a JSON file to see it here.";
   if (s === undefined) return zh ? "打开一个 JSON 文件，在这里查看。" : "Open a JSON file to see it here.";
   if ("pinned" in s) return zh ? "已钉住。打开一个 JSON 文件，在这里查看。" : "Pinned. Open a JSON file to see it here.";
   if ("lost" in s) {
@@ -166,23 +215,30 @@ function copy(v: Viewer, what: "path" | "value"): void {
 }
 
 tessoa.pages.define<Viewer>("json", {
-  open: ({ state }) => {
+  open: ({ page, state }) => {
+    const saved = state as Saved | undefined;
     const v: Viewer = {
+      page,
       file: undefined,
       picked: false,
       following: undefined,
+      followOn: saved?.follow !== false,
       name: "",
       tree: new tessoa.pages.TreeModel<Item>(),
       selected: undefined,
       status: "",
     };
-    const saved = state as { file?: unknown } | undefined;
     if (saved && typeof saved.file === "number") load(v, saved.file, true);
     return v;
   },
   // Only a picked file is kept: tessoa tells the page again what it follows
   // after a restart, and a followed file's reference may no longer work.
-  save: (v) => (v.file === undefined || !v.picked ? undefined : { file: v.file }),
+  save: (v): Saved | undefined => {
+    const saved: Saved = {};
+    if (v.file !== undefined && v.picked) saved.file = v.file;
+    if (!v.followOn) saved.follow = false;
+    return Object.keys(saved).length === 0 ? undefined : saved;
+  },
   follow,
   title: (v) => v.name || undefined,
   render: (v) => {
@@ -192,44 +248,55 @@ tessoa.pages.define<Viewer>("json", {
       <column pad="m" gap="s" h="fill">
         <row gap="s" align="center">
           <button key="open" icon="search" onClick={() => open(v)}>
-            Open JSON…
+            {zh() ? "打开 JSON…" : "Open JSON…"}
           </button>
+          <switch key="follow" checked={v.followOn} onToggle={(on) => setFollow(v, on)}>
+            {zh() ? "跟随选择" : "Follow selection"}
+          </switch>
           <text key="status" tone="dim" grow>
             {v.status}
           </text>
         </row>
-        <split key="split" ratio={0.5} grow>
-          <tree
-            key="json"
-            count={v.tree.count()}
-            empty={emptyText(v)}
-            selected={v.selected === undefined ? [] : [v.selected]}
-            row={(i) => v.tree.row(i, (_id, it) => ({ cells: [`${it.label}: ${preview(it.value)}`] }))}
-            onExpand={(row, open) => expand(v, row, open)}
-            onActivate={(row) => {
-              if (isContainer(v.tree.get(row)?.value)) expand(v, row, !v.tree.isOpen(row));
-            }}
-            onSelect={(ids) => {
-              v.selected = ids[0];
-            }}
-          />
-          <column pad="s" gap="s">
-            <text key="path" size="caption" tone="dim">
-              {item === undefined ? "Select a row to see its value." : item.path}
-            </text>
-            <text key="value" wrap>
-              {value.length > 4000 ? `${value.slice(0, 3999)}…` : value}
-            </text>
-            <row gap="s">
-              <button key="copy-path" icon="copy" disabled={item === undefined} onClick={() => copy(v, "path")}>
-                Copy path
-              </button>
-              <button key="copy-value" disabled={item === undefined} onClick={() => copy(v, "value")}>
-                Copy value
-              </button>
-            </row>
-          </column>
-        </split>
+        <drop-zone
+          key="drop"
+          accepts="files"
+          hint={zh() ? "可把 JSON 文件拖到这里打开。" : "Drop a JSON file here to open it."}
+          grow
+          onDropFiles={(files) => drop(v, files)}
+        >
+          <split key="split" ratio={0.5} grow>
+            <tree
+              key="json"
+              count={v.tree.count()}
+              empty={emptyText(v)}
+              selected={v.selected === undefined ? [] : [v.selected]}
+              row={(i) => v.tree.row(i, (_id, it) => ({ cells: [`${it.label}: ${preview(it.value)}`] }))}
+              onExpand={(row, open) => expand(v, row, open)}
+              onActivate={(row) => {
+                if (isContainer(v.tree.get(row)?.value)) expand(v, row, !v.tree.isOpen(row));
+              }}
+              onSelect={(ids) => {
+                v.selected = ids[0];
+              }}
+            />
+            <column pad="s" gap="s">
+              <text key="path" size="caption" tone="dim">
+                {item === undefined ? (zh() ? "选中一行，查看它的值。" : "Select a row to see its value.") : item.path}
+              </text>
+              <text key="value" wrap>
+                {value.length > 4000 ? `${value.slice(0, 3999)}…` : value}
+              </text>
+              <row gap="s">
+                <button key="copy-path" icon="copy" disabled={item === undefined} onClick={() => copy(v, "path")}>
+                  {zh() ? "复制路径" : "Copy path"}
+                </button>
+                <button key="copy-value" disabled={item === undefined} onClick={() => copy(v, "value")}>
+                  {zh() ? "复制值" : "Copy value"}
+                </button>
+              </row>
+            </column>
+          </split>
+        </drop-zone>
       </column>
     );
   },

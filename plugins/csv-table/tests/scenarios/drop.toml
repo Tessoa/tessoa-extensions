@@ -1,0 +1,31 @@
+# A file dropped on the page opens like a picked one, whatever its name, and
+# is kept across a restart with its sort order.
+name = "Opens a dropped file"
+
+[[files]]
+from = "csv/people.csv"
+selected = false
+
+[[files]]
+from = "csv/cities.csv"
+as = "cities.txt"
+selected = false
+
+[[steps]]
+open-page = "csv"
+expect-tree-contains = { kind = "drop-zone", key = "drop", count = 1 }
+
+[[steps]]
+drop-files = { onto = "drop", files = ["people.csv"] }
+expect-title = "people.csv"
+expect-text = { key = "status", text = "25 rows" }
+
+[[steps]]
+drop-files = { onto = "drop", files = ["cities.txt", "people.csv"] }
+expect-title = "cities.txt"
+expect-rows = { on = "rows", count = 3 }
+
+[[steps]]
+restart = true
+expect-title = "cities.txt"
+expect-rows = { on = "rows", count = 3 }

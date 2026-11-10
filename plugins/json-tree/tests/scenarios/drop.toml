@@ -1,0 +1,39 @@
+# A file dropped on the page opens like a picked one and is kept across a
+# restart; a file that is not JSON leaves the page as it is and says so.
+name = "Opens a dropped file"
+
+[[files]]
+from = "json/catalog.json"
+selected = false
+
+[[files]]
+from = "json/small.json"
+selected = false
+
+[[files]]
+from = "json/broken.json"
+selected = false
+
+[[steps]]
+open-page = "json"
+expect-tree-contains = { kind = "drop-zone", key = "drop", count = 1 }
+
+[[steps]]
+drop-files = { onto = "drop", files = ["small.json"] }
+expect-title = "small.json"
+expect-rows = { on = "json", count = 2, ids = ["$.id", "$.tags"] }
+
+[[steps]]
+drop-files = { onto = "drop", files = ["catalog.json", "small.json"] }
+expect-title = "catalog.json"
+expect-rows = { on = "json", count = 8 }
+
+[[steps]]
+drop-files = { onto = "drop", files = ["broken.json"] }
+expect-title = "catalog.json"
+expect-text = { key = "status", contains = "Not JSON" }
+
+[[steps]]
+restart = true
+expect-title = "catalog.json"
+expect-rows = { on = "json", count = 8 }

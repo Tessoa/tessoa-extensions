@@ -18,19 +18,30 @@
 // The page follows the selection (`follow = true` in plugin.toml): tessoa
 // draws a chip above it that says which tab group it follows, and the user
 // changes it there. When a .csv file is selected in that group, the page
-// shows it; anything else leaves the page as it is.
+// shows it; anything else leaves the page as it is. The "Follow selection"
+// switch next to "Open CSV…" stops that and starts it again: off, the page
+// keeps the file it shows whatever is selected; on again, it shows the .csv
+// file selected at that moment.
 //
-// The page saves the file reference and the sort order. After a restart it
-// reads the file again: references stay valid across restarts. A followed
-// file is not saved: tessoa says again what the page follows.
+// A file dropped on the table, from tessoa or from another program, opens
+// like a picked one, whatever its name: the user chose it, so a .txt or a
+// .tsv export opens too.
+//
+// The page saves the file reference, the sort order and the switch. After a
+// restart it reads the file again: references stay valid across restarts.
+// A followed file is not saved: tessoa says again what the page follows.
 
 interface Table {
+  /** The page's id, to ask tessoa what it follows when the switch turns on. */
+  page: number;
   /** The file shown, and its name. */
   file: tessoa.files.FileRef | undefined;
   /** The file was picked with "Open CSV…", not followed: it is the one to keep. */
   picked: boolean;
   /** What the page follows, as tessoa last said; undefined until it says. */
   following: tessoa.pagesHost.FollowSource | undefined;
+  /** The "Follow selection" switch: off, a selected file does not replace the one shown. */
+  followOn: boolean;
   name: string;
   header: string[];
   /** The rows of the file, without the header, each as long as the header. */
@@ -47,8 +58,10 @@ interface Table {
 
 /** What `save` keeps. */
 interface Saved {
-  file: number;
+  file?: number;
   sort?: tessoa.pages.SortState;
+  /** Present, and false, only when the switch is off. */
+  follow?: boolean;
 }
 
 const KEYS = ["Ctrl+c", "Meta+c"];
@@ -164,19 +177,49 @@ async function open(t: Table): Promise<void> {
   load(t, file, true);
 }
 
-/** Show the file selected in the followed group, when it is CSV. */
+/** Show the file selected in the followed group, when it is CSV and the switch is on. */
 function follow(t: Table, f: tessoa.pagesHost.FollowState): void {
   t.following = f.source;
-  if (f.file === undefined || f.file === t.file) return;
+  if (!t.followOn || f.file === undefined || f.file === t.file) return;
   const [info] = tessoa.refs.info([f.file]);
   if (info === undefined || info.isDir || !/\.csv$/i.test(info.name)) return;
   load(t, f.file, false);
+}
+
+/**
+ * Turn following on or off. Turned on, the page shows the .csv file
+ * selected now; the reference is read at once, before it may stop working.
+ */
+function setFollow(t: Table, on: boolean): void {
+  t.followOn = on;
+  if (!on) return;
+  const f = tessoa.pagesHost.followed(t.page);
+  if (f !== undefined) follow(t, f);
+}
+
+/** Open the first file dropped on the page; the others are not kept. */
+function drop(t: Table, files: tessoa.files.FileRef[]): void {
+  const file = tessoa.refs.info(files).find((i) => !i.isDir)?.ref;
+  const unused = files.filter((f) => f !== file && f !== t.file);
+  if (unused.length > 0) tessoa.refs.release(unused);
+  if (file === undefined) {
+    t.status = zh() ? "拖入的不是文件。" : "That is not a file.";
+    return;
+  }
+  load(t, file, true);
+  // Not read: nothing changed, and the reference is of no use.
+  if (t.file !== file) tessoa.refs.release([file]);
+}
+
+function zh(): boolean {
+  return tessoa.ui.language() === "zh";
 }
 
 /** What the empty table says: where to select a file, in tessoa's language. */
 function emptyText(t: Table): string {
   const zh = tessoa.ui.language() === "zh";
   const s = t.following;
+  if (!t.followOn) return zh ? "打开或拖入一个 CSV 文件，在这里查看它的行。" : "Open or drop a CSV file to see its rows here.";
   if (s === undefined) return zh ? "打开一个 CSV 文件，在这里查看它的行。" : "Open a CSV file to see its rows here.";
   if ("pinned" in s) return zh ? "已钉住。打开一个 CSV 文件，在这里查看它的行。" : "Pinned. Open a CSV file to see its rows here.";
   if ("lost" in s) {
@@ -201,11 +244,14 @@ function copy(t: Table): void {
 }
 
 tessoa.pages.define<Table>("csv", {
-  open: ({ state }) => {
+  open: ({ page, state }) => {
+    const saved = state as Partial<Saved> | undefined;
     const t: Table = {
+      page,
       file: undefined,
       picked: false,
       following: undefined,
+      followOn: saved?.follow !== false,
       name: "",
       header: [],
       rows: [],
@@ -215,14 +261,21 @@ tessoa.pages.define<Table>("csv", {
       selected: [],
       status: "",
     };
-    const saved = state as Partial<Saved> | undefined;
     if (saved && typeof saved.file === "number") {
       if (saved.sort && typeof saved.sort.column === "string") t.sort = saved.sort;
       load(t, saved.file, true);
     }
     return t;
   },
-  save: (t): Saved | undefined => (t.file === undefined || !t.picked ? undefined : { file: t.file, sort: t.sort }),
+  save: (t): Saved | undefined => {
+    const saved: Saved = {};
+    if (t.file !== undefined && t.picked) {
+      saved.file = t.file;
+      saved.sort = t.sort;
+    }
+    if (!t.followOn) saved.follow = false;
+    return Object.keys(saved).length === 0 ? undefined : saved;
+  },
   follow,
   title: (t) => t.name || undefined,
   keys: KEYS,
@@ -231,41 +284,52 @@ tessoa.pages.define<Table>("csv", {
     <column pad="m" gap="s" h="fill">
       <row gap="s" align="center">
         <button key="open" icon="search" onClick={() => open(t)}>
-          Open CSV…
+          {zh() ? "打开 CSV…" : "Open CSV…"}
         </button>
+        <switch key="follow" checked={t.followOn} onToggle={(on) => setFollow(t, on)}>
+          {zh() ? "跟随选择" : "Follow selection"}
+        </switch>
         <button key="copy" icon="copy" disabled={t.selected.length === 0} onClick={() => copy(t)}>
-          Copy
+          {zh() ? "复制" : "Copy"}
         </button>
         <text key="status" tone="dim" grow>
           {t.status}
         </text>
       </row>
-      <table
-        key="rows"
+      <drop-zone
+        key="drop"
+        accepts="files"
+        hint={zh() ? "可把 CSV 文件拖到这里打开。" : "Drop a CSV file here to open it."}
         grow
-        count={t.order.length}
-        columns={t.header.map((title, c) => ({
-          id: `c${c}`,
-          title,
-          sortable: true,
-          align: t.numeric[c] ? "end" : "start",
-        }))}
-        sort={t.sort}
-        selection="multi"
-        selected={t.selected}
-        empty={emptyText(t)}
-        row={(k) => {
-          const i = t.order[k];
-          return { id: `r${i}`, cells: t.rows[i] };
-        }}
-        onSort={(column, descending) => {
-          t.sort = { column, descending };
-          t.order = sortedOrder(t);
-        }}
-        onSelect={(ids) => {
-          t.selected = ids;
-        }}
-      />
+        onDropFiles={(files) => drop(t, files)}
+      >
+        <table
+          key="rows"
+          grow
+          count={t.order.length}
+          columns={t.header.map((title, c) => ({
+            id: `c${c}`,
+            title,
+            sortable: true,
+            align: t.numeric[c] ? "end" : "start",
+          }))}
+          sort={t.sort}
+          selection="multi"
+          selected={t.selected}
+          empty={emptyText(t)}
+          row={(k) => {
+            const i = t.order[k];
+            return { id: `r${i}`, cells: t.rows[i] };
+          }}
+          onSort={(column, descending) => {
+            t.sort = { column, descending };
+            t.order = sortedOrder(t);
+          }}
+          onSelect={(ids) => {
+            t.selected = ids;
+          }}
+        />
+      </drop-zone>
     </column>
   ),
 });
